@@ -25,5 +25,17 @@ void ConvexPolyhedronAssembly<Pc>::for_each_intersection( CP &cp, const F &f ) c
     TODO;
 }
 
+template<class Pc> template<class V>
+void ConvexPolyhedronAssembly<Pc>::display_boundaries( V &vtk_output ) const {
+    for( const Item &item : items )
+        item.polyhedron.display( vtk_output, { item.coeff }, false );
+}
+
+template<class Pc> template<class V>
+void ConvexPolyhedronAssembly<Pc>::display_coeffs( V &vtk_output ) const {
+    for( const Item &item : items )
+        item.polyhedron.display( vtk_output, { item.coeff }, true );
+}
+
 } // namespace Bounds
 } // namespace PowerDiagram

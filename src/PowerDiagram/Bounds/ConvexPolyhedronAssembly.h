@@ -27,6 +27,8 @@ public:
     // info
     const CP&              englobing_convex_polyhedron() const;
     template<class F> void for_each_intersection      ( CP &cp, const F &f ) const; ///< f( ConvexPolyhedron, SpaceFunction )
+    template<class V> void display_boundaries         ( V &vtk_output ) const;
+    template<class V> void display_coeffs             ( V &vtk_output ) const;
 
     //
 private:

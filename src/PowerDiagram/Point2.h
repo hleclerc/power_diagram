@@ -5,6 +5,10 @@
 
 template<class TF>
 struct Point2 {
+    /**/      Point2         ( const TF *v ) : x( v[ 0 ] ), y( v[ 1 ] ) {}
+    /**/      Point2         ( TF x, TF y ) : x( x ), y( y ) {}
+    /**/      Point2         () {}
+
     void      write_to_stream( std::ostream &os ) const { os << x << " " << y; }
     const TF &operator[]     ( std::size_t d ) const { return ( &x )[ d ]; }
     TF       &operator[]     ( std::size_t d ) { return ( &x )[ d ]; }
