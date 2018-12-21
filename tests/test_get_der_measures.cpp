@@ -2,7 +2,7 @@
 #include "../src/PowerDiagram/get_der_measures_ap.h"
 #include "../src/PowerDiagram/get_der_measures.h"
 #include "../src/PowerDiagram/Visitors/ZGrid.h"
-#include "../src/PowerDiagram/get_measures.h"
+#include "../src/PowerDiagram/get_integrations.h"
 #include <boost/multiprecision/mpfr.hpp>
 #include "catch_main.h"
 
