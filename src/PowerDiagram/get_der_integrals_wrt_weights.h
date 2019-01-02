@@ -11,10 +11,8 @@ namespace PowerDiagram {
 /**
    We assume that grid has already been initialized by diracs
 */
-template<class TI,class TF,class Grid,class Bounds,class Diracs>
-int get_der_measures( std::vector<TI> &m_offsets, std::vector<TI> &m_columns, std::vector<TF> &m_values, std::vector<TF> &v_values, Grid &grid, Bounds &bounds, const Diracs &diracs ) {
-    using Pt = decltype( diracs[ 0 ].pos );
-
+template<class TI,class TF,class Grid,class Bounds,class Pt,class Func>
+int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &m_columns, std::vector<TF> &m_values, std::vector<TF> &v_values, Grid &grid, Bounds &bounds, const Pt *positions, const TF *weights, std::size_t nb_diracs, Func ) {
     struct DataPerThread {
         DataPerThread( std::size_t approx_nb_diracs ) {
             row_items    .reserve( 64 );
@@ -30,12 +28,12 @@ int get_der_measures( std::vector<TI> &m_offsets, std::vector<TI> &m_columns, st
     };
 
     int nb_threads = thread_pool.nb_threads();
-    std::vector<DataPerThread> data_per_threads( nb_threads, diracs.size() / nb_threads );
-    std::vector<std::pair<int,TI>> pos_in_loc_matrices( diracs.size() ); // num dirac => num_thread, num sub row
+    std::vector<DataPerThread> data_per_threads( nb_threads, nb_diracs / nb_threads );
+    std::vector<std::pair<int,TI>> pos_in_loc_matrices( nb_diracs ); // num dirac => num_thread, num sub row
 
-    v_values.resize( diracs.size() );
+    v_values.resize( nb_diracs );
     for( TF &v : v_values )
-        v = 0;
+        v = - TF( 1 ) / nb_diracs;
 
     int err = grid.for_each_laguerre_cell( [&]( auto &lc, std::size_t num_dirac_0, int num_thread ) {
         DataPerThread &dpt = data_per_threads[ num_thread ];
@@ -44,8 +42,8 @@ int get_der_measures( std::vector<TI> &m_offsets, std::vector<TI> &m_columns, st
         // get local row_items (sorted)
         TF der_0 = 0;
         dpt.row_items.resize( 0 );
-        Pt d0_center = diracs[ num_dirac_0 ].pos;
-        TF d0_weight = diracs[ num_dirac_0 ].weight;
+        Pt d0_center = positions[ num_dirac_0 ];
+        TF d0_weight = weights[ num_dirac_0 ];
         bounds.for_each_intersection( lc, [&]( auto &cp, SpaceFunctions::Constant<TF> space_func ) {
             TF coeff = 0.5 * space_func.coeff;
             v_values[ num_dirac_0 ] += space_func.coeff * cp.measure();
@@ -55,9 +53,9 @@ int get_der_measures( std::vector<TI> &m_offsets, std::vector<TI> &m_columns, st
                 if ( num_dirac_0 == num_dirac_1 ) {
                     der_0 += coeff * boundary_measure / sqrt( d0_weight );
                 } else {
-                    TI m_num_dirac_1 = num_dirac_1 % diracs.size();
-                    Pt d1_center = diracs[ m_num_dirac_1 ].pos;
-                    if ( std::size_t nu = num_dirac_1 / diracs.size() )
+                    TI m_num_dirac_1 = num_dirac_1 % nb_diracs;
+                    Pt d1_center = positions[ m_num_dirac_1 ];
+                    if ( std::size_t nu = num_dirac_1 / nb_diracs )
                         TODO; // d1_center = transformation( _tranformations[ nu - 1 ], d1_center );
 
                     TF dist = norm_2( d0_center - d1_center );
@@ -80,7 +78,7 @@ int get_der_measures( std::vector<TI> &m_offsets, std::vector<TI> &m_columns, st
             dpt.columns.push_back( dpt.row_items[ i ].first  );
             dpt.values .push_back( dpt.row_items[ i ].second );
         }
-    }, bounds.englobing_convex_polyhedron(), diracs, true /*stop if void laguerre cell*/ );
+    }, bounds.englobing_convex_polyhedron(), positions, weights, nb_diracs, true /*stop if void laguerre cell*/ );
     if ( err )
         return err;
 
@@ -92,12 +90,12 @@ int get_der_measures( std::vector<TI> &m_offsets, std::vector<TI> &m_columns, st
     }
 
     // assembly
-    m_offsets.resize( diracs.size() + 1 );
+    m_offsets.resize( nb_diracs + 1 );
     m_columns.reserve( nnz );
     m_values .reserve( nnz );
     m_columns.resize( 0 );
     m_values .resize( 0 );
-    for( std::size_t n = 0; n < diracs.size(); ++n ) {
+    for( std::size_t n = 0; n < nb_diracs; ++n ) {
         m_offsets[ n ] = m_columns.size();
 
         std::size_t lr = pos_in_loc_matrices[ n ].second;
@@ -108,6 +106,11 @@ int get_der_measures( std::vector<TI> &m_offsets, std::vector<TI> &m_columns, st
     m_offsets.back() = m_columns.size();
 
     return 0;
+}
+
+template<class TI,class TF,class Grid,class Bounds,class Pt>
+int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &m_columns, std::vector<TF> &m_values, std::vector<TF> &v_values, Grid &grid, Bounds &bounds, const Pt *positions, const TF *weights, std::size_t nb_diracs ) {
+    return get_der_integrals_wrt_weights( m_offsets, m_columns, m_values, v_values, grid, bounds, positions, weights, nb_diracs, FunctionEnum::Unit() );
 }
 
 } // namespace PowerDiagram

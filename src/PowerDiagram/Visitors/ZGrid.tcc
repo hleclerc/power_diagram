@@ -103,8 +103,7 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
             TF   dist;
         };
 
-        Front( std::vector<std::vector<TI>> &visited ) : visited( visited ) {
-            op_count = 0;
+        Front( TI& op_count, std::vector<std::vector<TI>> &visited ) : op_count( op_count ), visited( visited ) {
         }
 
         void init( const std::vector<Grid> &grids, TI num_grid, TI num_cell ) {
@@ -147,7 +146,7 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
         }
 
         Pt                            orig_cell_pos;
-        TI                            op_count;
+        TI&                           op_count;
         std::vector<std::vector<TI>>& visited;
         std::priority_queue<Item>     items;
     };
@@ -214,6 +213,9 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
     // vectors for stuff that will be reused inside the execution threads
     int nb_threads = thread_pool.nb_threads(), nb_jobs = 4 * nb_threads;
     std::vector<std::vector<std::vector<TI>>> visited( nb_threads );
+    std::vector<TI> op_counts( nb_threads, 0 );
+    for( int n = 0; n < nb_threads; ++n )
+        visited[ n ].resize( grids.size() );
 
     #ifdef DISPLAY_nb_explored_cells
     std::vector<std::size_t> nb_explored_cells( nb_jobs, 0 );
@@ -225,8 +227,7 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
         Grid &grid = grids[ num_grid ];
 
         thread_pool.execute( nb_jobs, [&]( std::size_t num_job, int num_thread ) {
-            visited[ num_thread ].resize( grids.size() );
-            Front front( visited[ num_thread ] );
+            Front front( op_counts[ num_thread ], visited[ num_thread ] );
             CP lc;
 
             TI beg_cell = ( num_job + 0 ) * ( grid.cells.size() - 1 ) / nb_jobs;

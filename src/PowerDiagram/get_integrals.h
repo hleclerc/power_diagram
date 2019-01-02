@@ -10,7 +10,7 @@ namespace PowerDiagram {
    We assume that grid has already been initialized by diracs
 */
 template<class TF,class Grid,class Bounds,class Pt,class Func>
-void integration( TF *res, Grid &grid, Bounds &bounds, const Pt *positions, const TF *weights, std::size_t nb_diracs, const Func &func ) {
+void get_integrals( TF *res, Grid &grid, Bounds &bounds, const Pt *positions, const TF *weights, std::size_t nb_diracs, const Func &func ) {
     grid.for_each_laguerre_cell( [&]( auto &lc, auto num_dirac ) {
         TF measure = 0;
         bounds.for_each_intersection( lc, [&]( auto &cp, SpaceFunctions::Constant<TF> space_func ) {
@@ -21,8 +21,8 @@ void integration( TF *res, Grid &grid, Bounds &bounds, const Pt *positions, cons
 }
 
 template<class TF,class Grid,class Bounds,class Pt>
-void integration( TF *res, Grid &grid, Bounds &bounds, const Pt *positions, const TF *weights, std::size_t nb_diracs ) {
-    integration( res, grid, bounds, positions, weights, nb_diracs, FunctionEnum::Unit() );
+void get_integrals( TF *res, Grid &grid, Bounds &bounds, const Pt *positions, const TF *weights, std::size_t nb_diracs ) {
+    get_integrals( res, grid, bounds, positions, weights, nb_diracs, FunctionEnum::Unit() );
 }
 
 } // namespace PowerDiagram

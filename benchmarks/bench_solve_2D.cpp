@@ -4,8 +4,8 @@
 #include "../src/PowerDiagram/AmgclSolver.h"
 #include "../src/PowerDiagram/VtkOutput.h"
 
-#include "../src/PowerDiagram/get_der_measures_ap.h"
-#include "../src/PowerDiagram/get_der_measures.h"
+#include "../src/PowerDiagram/get_der_integrals_wrt_weights_ap.h"
+#include "../src/PowerDiagram/get_der_integrals_wrt_weights.h"
 #include "../src/PowerDiagram/get_centroids.h"
 
 #include "../src/PowerDiagram/system/Tick.h"

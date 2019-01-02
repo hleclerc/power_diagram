@@ -1,6 +1,6 @@
 #pragma once
 
-#include "get_integrations.h"
+#include "get_integrals.h"
 #include <vector>
 
 namespace PowerDiagram {

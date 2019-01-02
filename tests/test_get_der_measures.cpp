@@ -1,8 +1,8 @@
 #include "../src/PowerDiagram/Bounds/ConvexPolyhedronAssembly.h"
-#include "../src/PowerDiagram/get_der_measures_ap.h"
-#include "../src/PowerDiagram/get_der_measures.h"
+#include "../src/PowerDiagram/get_der_integrals_wrt_weights_ap.h"
+#include "../src/PowerDiagram/get_der_integrals_wrt_weights.h"
 #include "../src/PowerDiagram/Visitors/ZGrid.h"
-#include "../src/PowerDiagram/get_integrations.h"
+#include "../src/PowerDiagram/get_integrals.h"
 #include <boost/multiprecision/mpfr.hpp>
 #include "catch_main.h"
 
