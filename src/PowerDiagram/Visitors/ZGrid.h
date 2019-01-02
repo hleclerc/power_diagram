@@ -37,7 +37,7 @@ public:
     using                   TZ                    = std::uint64_t; ///< zcoords
 
     // methods
-    /* ctor */              ZGrid                 ( std::size_t max_diracs_per_cell = 11, TF max_ratio_between_weights = 2 );
+    /* ctor */              ZGrid                 ( std::size_t max_diracs_per_cell = 11, TF max_delta_weight_per_grid = 1e40 );
 
     void                    update                ( const Pt *positions, const TF *weights, std::size_t nb_diracs, bool positions_have_changed = true, bool weights_have_changed = true );
     int                     for_each_laguerre_cell( const std::function<void( CP &lc, std::size_t num )> &f, const CP &starting_lc, const Pt *positions, const TF *weights, std::size_t nb_diracs, bool stop_if_void_lc = false ); ///< starting_lc can be a polygonal bound
@@ -46,7 +46,7 @@ public:
     template<class V> void  display               ( V &vtk_output ) const; ///< for debug purpose
 
     // values used by init
-    TF                      max_ratio_between_weights;
+    TF                      max_delta_weight_per_grid;
     int                     max_diracs_per_cell;
     bool                    ball_cut;
 

@@ -38,8 +38,9 @@ struct Solver {
 
         tick << "derivatives";
         PowerDiagram::get_der_measures( m_offsets, m_columns, m_values, v_values, grid, bounds, diracs );
-        for( std::size_t r = 0; r < diracs.size(); ++r )
-            v_values[ r ] -= M_PI * pow( target_radius, 2 );
+        TODO;
+        //        for( std::size_t r = 0; r < diracs.size(); ++r )
+        //            v_values[ r ] -= M_PI * pow( target_radius, 2 );
         tick >> "derivatives";
 
         // solve

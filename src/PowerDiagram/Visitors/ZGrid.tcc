@@ -16,7 +16,7 @@ namespace Visitor {
 
 
 template<class Pc>
-ZGrid<Pc>::ZGrid( std::size_t max_diracs_per_cell, TF max_ratio_between_weights ) : max_ratio_between_weights( max_ratio_between_weights ), max_diracs_per_cell( max_diracs_per_cell ) {
+ZGrid<Pc>::ZGrid( std::size_t max_diracs_per_cell, TF max_delta_weight_per_grid ) : max_delta_weight_per_grid( max_delta_weight_per_grid ), max_diracs_per_cell( max_diracs_per_cell ) {
     ball_cut = allow_ball_cut;
 }
 
@@ -328,9 +328,13 @@ void ZGrid<Pc>::update_the_limits( const Pt *positions, const TF *weights, std::
         max_weight = max( max_weight, weights[ num_dirac ] );
     }
 
-    max_weight *= 1 + std::numeric_limits<TF>::epsilon();
+    if ( max_weight == min_weight )
+        max_weight = min_weight + max_delta_weight_per_grid / 10;
+    else
+        max_weight = min_weight + ( max_weight - min_weight ) * ( 1 + std::numeric_limits<TF>::epsilon() );
 
-    int nb_grids = 1; // ceil( log2( max_weight / min_weight ) );
+    int nb_grids = ceil( ( max_weight - min_weight ) / max_delta_weight_per_grid );
+    P( nb_grids );
     grids.resize( nb_grids );
 
     //
@@ -560,7 +564,7 @@ void ZGrid<Pc>::fill_the_grids( const Pt *positions, const TF *weights, std::siz
     // assign diracs to grids
     if ( grids.size() > 1 ) {
         for( std::size_t num_dirac = 0; num_dirac < nb_diracs; ++num_dirac ) {
-            int num_grid = 0; // log2( max_weight / diracs[ num_dirac ].weight );
+            int num_grid = ( weights[ num_dirac ] - min_weight ) / max_delta_weight_per_grid;
             grids[ num_grid ].dirac_indices.push_back( num_dirac );
         }
     }
