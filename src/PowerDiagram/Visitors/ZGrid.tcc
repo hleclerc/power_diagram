@@ -5,6 +5,8 @@
 #include <queue>
 #include <cmath>
 
+#define DISPLAY_nb_explored_cells
+
 extern const std::uint32_t morton_256_2D_x[ 256 ];
 extern const std::uint32_t morton_256_2D_y[ 256 ];
 extern const std::uint32_t morton_256_3D_x[ 256 ];
@@ -90,7 +92,7 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
 }
 
 template<class Pc>
-int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size_t num, int num_thread )> &cb, const CP &starting_lc, const Pt *positions, const TF *weights, std::size_t /*nb_diracs*/, bool stop_if_void_lc ) {
+int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size_t num, int num_thread )> &cb, const CP &starting_lc, const Pt *positions, const TF *weights, std::size_t nb_diracs, bool stop_if_void_lc ) {
     using std::sqrt;
 
     #define ZIndex_USES_HEAP
@@ -218,7 +220,7 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
         visited[ n ].resize( grids.size() );
 
     #ifdef DISPLAY_nb_explored_cells
-    std::vector<std::size_t> nb_explored_cells( nb_jobs, 0 );
+    std::vector<std::size_t> nb_explored_cells( nb_threads, 0 );
     #endif // DISPLAY_nb_explored_cells
 
     // for each item
@@ -301,7 +303,7 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
     TI nen = 0;
     for( TI n : nb_explored_cells )
         nen += n;
-    P( nen / grids[ 0 ].cells.size() );
+    P( grids[ 0 ].cells.size(), nen / nb_diracs );
     #endif // DISPLAY_nb_explored_cells
 
     return err;
@@ -329,12 +331,11 @@ void ZGrid<Pc>::update_the_limits( const Pt *positions, const TF *weights, std::
     }
 
     if ( max_weight == min_weight )
-        max_weight = min_weight + max_delta_weight_per_grid / 10;
+        div_weight = 10 / max_delta_weight_per_grid;
     else
-        max_weight = min_weight + ( max_weight - min_weight ) * ( 1 + std::numeric_limits<TF>::epsilon() );
+        div_weight = ( 1 - std::numeric_limits<TF>::epsilon() ) / ( max_weight - min_weight );
 
-    int nb_grids = ceil( ( max_weight - min_weight ) / max_delta_weight_per_grid );
-    P( nb_grids );
+    int nb_grids = ceil( ( 1 / div_weight ) / max_delta_weight_per_grid );
     grids.resize( nb_grids );
 
     //
@@ -564,7 +565,7 @@ void ZGrid<Pc>::fill_the_grids( const Pt *positions, const TF *weights, std::siz
     // assign diracs to grids
     if ( grids.size() > 1 ) {
         for( std::size_t num_dirac = 0; num_dirac < nb_diracs; ++num_dirac ) {
-            int num_grid = ( weights[ num_dirac ] - min_weight ) / max_delta_weight_per_grid;
+            int num_grid = div_weight * ( weights[ num_dirac ] - min_weight );
             grids[ num_grid ].dirac_indices.push_back( num_dirac );
         }
     }

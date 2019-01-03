@@ -120,6 +120,7 @@ private:
     TF                      grid_length;
     TF                      min_weight;
     TF                      max_weight;
+    TF                      div_weight;
     Pt                      min_point;
     Pt                      max_point;
     std::vector<Grid>       grids;                     ///< for each weight span

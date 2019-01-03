@@ -1,5 +1,6 @@
 #include "get_der_integrals_wrt_weights.h"
 #include "OptimalTransportSolver.h"
+// #include "AmgclSolver.h"
 #include "EigenSolver.h"
 #include "system/Tick.h"
 
@@ -21,16 +22,14 @@ void OptimalTransportSolver<Grid, Bounds>::solve( const Pt *positions, TF *weigh
 
     for( std::size_t num_iter = 0; num_iter < max_nb_iter; ++num_iter ) {
         // grid
-        tick << "grid";
+        auto t0 = Tick::get_time();
         grid.update( positions, weights, nb_diracs, num_iter == 0, true );
-        tick >> "grid";
+        timings_grid.push_back( Tick::elapsed_since( t0 ) );
 
         // der
-        tick << "der";
-        auto t0 = tick.get_time();
+        t0 = Tick::get_time();
         int error = get_der_integrals_wrt_weights( m_offsets, m_columns, m_values, v_values, grid, bounds, positions, weights, nb_diracs );
-        P( tick.elapsed_since( t0 ) );
-        tick >> "der";
+        timings_der.push_back( Tick::elapsed_since( t0 ) );
         m_values[ 0 ] *= 2;
 
         // go back if pb
@@ -38,6 +37,7 @@ void OptimalTransportSolver<Grid, Bounds>::solve( const Pt *positions, TF *weigh
             TF ratio = 0.1;
             for( std::size_t i = 0; i < nb_diracs; ++i )
                 weights[ i ] = ( 1 - ratio ) * old_weights[ i ] + ratio * weights[ i ];
+            timings_solve.push_back( 0 );
             continue;
         }
         for( std::size_t i = 0; i < nb_diracs; ++i )
@@ -45,9 +45,10 @@ void OptimalTransportSolver<Grid, Bounds>::solve( const Pt *positions, TF *weigh
 
         // solve
         EigenSolver es;
-        tick << "solve";
+        // AmgclSolver es;
+        t0 = Tick::get_time();
         es.solve( dw, m_offsets, m_columns, m_values, v_values );
-        tick >> "solve";
+        timings_solve.push_back( Tick::elapsed_since( t0 ) );
 
         TF mdw = 0;
         for( std::size_t i = 0; i < nb_diracs; ++i ) {
@@ -59,6 +60,10 @@ void OptimalTransportSolver<Grid, Bounds>::solve( const Pt *positions, TF *weigh
         if ( mdw < 1e-6 )
             break;
     }
+
+    P( timings_grid  );
+    P( timings_der   );
+    P( timings_solve );
 }
 
 template<class Grid, class Bounds> template<class VO>

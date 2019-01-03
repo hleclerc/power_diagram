@@ -23,11 +23,13 @@ public:
 
     // input parameters
     std::size_t     max_nb_iter;
-
     Bounds&         bounds;
     Grid&           grid;
 
     // by products
+    std::vector<TF> timings_solve;
+    std::vector<TF> timings_grid;
+    std::vector<TF> timings_der;
     std::vector<TF> old_weights;
     std::vector<TI> m_offsets;
     std::vector<TI> m_columns;
