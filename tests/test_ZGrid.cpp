@@ -23,11 +23,13 @@ TEST_CASE( "ZGrid measures" ) {
     grid.update( positions.data(), weights.data(), positions.size() );
 
     VtkOutput<1> vo( { "num" } );
+    std::mutex mutex;
     std::vector<double> volumes( positions.size() );
     std::vector<double> ext_perimeters( positions.size(), 0.0 );
     std::map<std::pair<std::size_t,std::size_t>,std::vector<double>> bms;
     grid.for_each_laguerre_cell( [&]( auto &lc, std::size_t num_dirac_0 ) {
         bounds.for_each_intersection( lc, [&]( auto &cp, auto space_func ) {
+            mutex.lock();
             volumes[ num_dirac_0 ] += cp.integration( space_func );
             cp.display( vo, { 1.0 * num_dirac_0 } );
 
@@ -40,6 +42,8 @@ TEST_CASE( "ZGrid measures" ) {
                 auto ma = std::max( num_dirac_0, num_dirac_1 );
                 bms[ std::make_pair( mi, ma ) ].push_back( boundary_measure );
             } );
+            
+            mutex.unlock();
         } );
     }, bounds.englobing_convex_polyhedron(), positions.data(), weights.data(), positions.size() );
 
@@ -59,5 +63,47 @@ TEST_CASE( "ZGrid measures" ) {
     }
 
     grid.display( vo );
-    vo.save( "pd.vtk" );
+    // vo.save( "pd.vtk" );
+}
+
+TEST_CASE( "several ZGrids" ) {
+    struct Pc     { enum { nb_bits_per_axis = 31, allow_ball_cut = 0, dim = 2 }; using TI = std::size_t; using TF = double; };
+    using  Bounds = PowerDiagram::Bounds::ConvexPolyhedronAssembly<Pc>;
+    using  Grid   = PowerDiagram::Visitor::ZGrid<Pc>;
+
+    std::vector<Grid::Pt> positions;
+    std::vector<Grid::TF> weights;
+    for( double i = 0; i < 50; i += 2 ) {
+        positions.push_back( { 0, i } );
+        weights.push_back( 1.0 );
+    }
+    for( double i = 0; i < 50; i += 2 ) {
+        positions.push_back( { 49, i } );
+        weights.push_back( 2.0 );
+    }
+
+    Bounds bounds;
+    bounds.add_box( { -1, -1 }, { 50, 50 }, 1.0, -1 );
+
+    Grid grid( 2, 0.75 );
+    grid.update( positions.data(), weights.data(), positions.size() );
+
+    std::atomic<int> nb_cp( 0 );
+    grid.for_each_laguerre_cell( [&]( auto &lc, std::size_t num_dirac_0 ) {
+        nb_cp++;
+    }, bounds.englobing_convex_polyhedron(), positions.data(), weights.data(), positions.size() );
+
+    CHECK( nb_cp == weights.size() );
+
+    // VtkOutput<1> vo_grid( { "num" } );
+    // grid.display( vo_grid );
+    // vo_grid.save( "vtk/grid.vtk" );
+
+    // VtkOutput<1> vo_pd( { "num" } );
+    // grid.for_each_laguerre_cell( [&]( auto &lc, std::size_t num_dirac_0 ) {
+    //     bounds.for_each_intersection( lc, [&]( auto &cp, auto space_func ) {
+    //         cp.display( vo_pd, { 1.0 * num_dirac_0 } );
+    //     } );
+    // }, bounds.englobing_convex_polyhedron(), positions.data(), weights.data(), positions.size() );
+    // vo_pd.save( "vtk/pd.vtk" );
 }

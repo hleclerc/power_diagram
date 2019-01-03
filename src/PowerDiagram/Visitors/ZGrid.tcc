@@ -5,7 +5,7 @@
 #include <queue>
 #include <cmath>
 
-#define DISPLAY_nb_explored_cells
+// #define DISPLAY_nb_explored_cells
 
 extern const std::uint32_t morton_256_2D_x[ 256 ];
 extern const std::uint32_t morton_256_2D_y[ 256 ];
@@ -109,9 +109,6 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
         }
 
         void init( const std::vector<Grid> &grids, TI num_grid, TI num_cell ) {
-            for( std::size_t n = 0; n < grids.size(); ++n )
-                visited[ n ].resize( grids[ n ].cells.size(), op_count );
-
             orig_cell_pos = grids[ num_grid ].cells[ num_cell ].pos;
             visited[ num_grid ][ num_cell ] = ++op_count;
         }
@@ -216,8 +213,12 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
     int nb_threads = thread_pool.nb_threads(), nb_jobs = 4 * nb_threads;
     std::vector<std::vector<std::vector<TI>>> visited( nb_threads );
     std::vector<TI> op_counts( nb_threads, 0 );
-    for( int n = 0; n < nb_threads; ++n )
-        visited[ n ].resize( grids.size() );
+
+    for( int num_thread = 0; num_thread < nb_threads; ++num_thread ) {
+        visited[ num_thread ].resize( grids.size() );
+        for( std::size_t num_grid = 0; num_grid < grids.size(); ++num_grid )
+            visited[ num_thread ][ num_grid ].resize( grids[ num_grid ].cells.size(), op_counts[ num_thread ] );
+    }
 
     #ifdef DISPLAY_nb_explored_cells
     std::vector<std::size_t> nb_explored_cells( nb_threads, 0 );
@@ -237,26 +238,34 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
             for( TI num_cell = beg_cell; num_cell < end_cell && err == 0; ++num_cell ) {
                 const Cell &cell = grid.cells[ num_cell ];
                 for( TI num_dirac : Span<TI>{ grid.dpc_values.data() + cell.dpc_offset, grid.dpc_values.data() + grid.cells[ num_cell + 1 ].dpc_offset } ) {
-                    // front
-                    front.init( grids, num_grid, num_cell );
-
-                    // => neighbors in the same grid
-                    for( TI num_ng_node : Span<TI>{ grid.ng_indices.data() + grid.ng_offsets[ num_cell + 0 ], grid.ng_indices.data() + grid.ng_offsets[ num_cell + 1 ] } )
-                        front.push_without_check( num_grid, num_ng_node, grids );
-
-                    // => items of the grids for != weight containing the dirac
-                    for( std::size_t num_ng_grid = 0; num_ng_grid < grids.size(); ++num_ng_grid ) {
-                        if ( num_ng_grid != num_grid ) {
-                            TI num_ng_node = grids[ num_ng_grid ].cell_index_vs_dirac_number[ num_dirac ];
-                            front.push_without_check( num_ng_grid, num_ng_node, grids );
-                        }
-                    }
-
                     // start of lc: cut with nodes in the same cell
                     lc = starting_lc;
                     for( TI num_cr_dirac : Span<TI>{ grid.dpc_values.data() + cell.dpc_offset, grid.dpc_values.data() + grid.cells[ num_cell + 1 ].dpc_offset } )
                         if ( num_cr_dirac != num_dirac )
                             plane_cut( lc, num_dirac, num_cr_dirac );
+
+                    // front
+                    front.init( grids, num_grid, num_cell );
+
+                    // => neighbors in the same grid
+                    for( TI num_ng_cell : Span<TI>{ grid.ng_indices.data() + grid.ng_offsets[ num_cell + 0 ], grid.ng_indices.data() + grid.ng_offsets[ num_cell + 1 ] } )
+                        front.push_without_check( num_grid, num_ng_cell, grids );
+
+                    // // => items of the grids for != weight containing the dirac
+                    for( std::size_t num_pa_grid = 0; num_pa_grid < grids.size(); ++num_pa_grid ) {
+                        if ( num_pa_grid != num_grid ) {
+                            Grid &pa_grid = grids[ num_pa_grid ];
+                            TI num_pa_cell = pa_grid.cell_index_vs_dirac_number[ num_dirac ];
+
+                            // cut with items in pa cell
+                            for( TI num_cr_dirac : Span<TI>{ pa_grid.dpc_values.data() + pa_grid.cells[ num_pa_cell + 1 ].dpc_offset, pa_grid.dpc_values.data() + pa_grid.cells[ num_pa_cell + 1 ].dpc_offset } )
+                                plane_cut( lc, num_dirac, num_cr_dirac );
+
+                            // add neighbors in the front
+                            for( TI num_ng_cell : Span<TI>{ pa_grid.ng_indices.data() + pa_grid.ng_offsets[ num_pa_cell + 0 ], pa_grid.ng_indices.data() + pa_grid.ng_offsets[ num_pa_cell + 1 ] } )
+                                front.push_without_check( num_pa_grid, num_ng_cell, grids );
+                        }
+                    }
 
                     // neighbors
                     while( ! front.empty() ) {
@@ -274,7 +283,7 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
                             continue;
 
                         // if we have diracs in cr, do the cuts
-                        for( TI num_cr_dirac : Span<TI>{ grid.dpc_values.data() + cr_cell.dpc_offset, grid.dpc_values.data() + cr_grid.cells[ cr.num_cell + 1 ].dpc_offset } )
+                        for( TI num_cr_dirac : Span<TI>{ cr_grid.dpc_values.data() + cr_cell.dpc_offset, cr_grid.dpc_values.data() + cr_grid.cells[ cr.num_cell + 1 ].dpc_offset } )
                             plane_cut( lc, num_dirac, num_cr_dirac );
 
                         // update the front
@@ -330,14 +339,10 @@ void ZGrid<Pc>::update_the_limits( const Pt *positions, const TF *weights, std::
         max_weight = max( max_weight, weights[ num_dirac ] );
     }
 
-    if ( max_weight == min_weight )
-        div_weight = 10 / max_delta_weight_per_grid;
-    else
-        div_weight = ( 1 - std::numeric_limits<TF>::epsilon() ) / ( max_weight - min_weight );
-
-    int nb_grids = ceil( ( 1 / div_weight ) / max_delta_weight_per_grid );
+    int nb_grids = 1 + floor( ( max_weight - min_weight ) / max_delta_weight_per_grid );
     grids.resize( nb_grids );
-
+    P( nb_grids );
+    
     //
     grid_length = 0;
     for( std::size_t d = 0; d < dim; ++d )
@@ -474,7 +479,7 @@ void ZGrid<Pc>::fill_grid_using_zcoords( TI num_grid, const Pt *positions, const
     }
 
     // prepare cell_index_vs_dirac_number => we will set the values for the diracs in this grid
-    grid.cell_index_vs_dirac_number.resize( znodes.size(), 666 );
+    grid.cell_index_vs_dirac_number.resize( nb_diracs, 666 );
 
     // sorting w.r.t. zcoords
     znodes.reserve( 2 * znodes.size() );
@@ -565,7 +570,7 @@ void ZGrid<Pc>::fill_the_grids( const Pt *positions, const TF *weights, std::siz
     // assign diracs to grids
     if ( grids.size() > 1 ) {
         for( std::size_t num_dirac = 0; num_dirac < nb_diracs; ++num_dirac ) {
-            int num_grid = div_weight * ( weights[ num_dirac ] - min_weight );
+            int num_grid = ( weights[ num_dirac ] - min_weight ) / max_delta_weight_per_grid;
             grids[ num_grid ].dirac_indices.push_back( num_dirac );
         }
     }
@@ -582,13 +587,18 @@ void ZGrid<Pc>::fill_the_grids( const Pt *positions, const TF *weights, std::siz
         for( std::size_t num_ot_grid = 0; num_ot_grid < grids.size(); ++num_ot_grid ) {
             if ( num_ot_grid == num_grid )
                 continue;
+
             znodes.clear();
             for( TI num_dirac : grids[ num_grid ].dirac_indices )
                 znodes.push_back( { zcoords_for( positions[ num_dirac ] ), num_dirac } );
-            TODO;
-            //            grids[ num_ot_grid ].octree.find_nodes( pos_to_find, [&]( TI cell_index, TI num_dirac ) {
-            //                grids[ num_ot_grid ].cell_index_vs_dirac_number[ num_dirac ] = cell_index;
-            //            } );
+
+            znodes.reserve( 2 * znodes.size() );
+            ZNode *out = radix_sort( znodes.data() + znodes.size(), znodes.data(), znodes.size(), N<sizeof_zcoords>(), rs_tmps );
+            for( std::size_t i = 0, j = 0; i < znodes.size(); ++i ) {
+                while ( zcells[ j ].zcoords <= out[ i ].zcoords )
+                    ++j;
+                grids[ num_ot_grid ].cell_index_vs_dirac_number[ out[ i ].index ] = j - 1;
+            }
         }
     }
 }
@@ -641,7 +651,7 @@ void ZGrid<Pc>::display( V &vtk_output ) const {
                     Point2<TF>{ p[ 0 ] + b, p[ 1 ] + b },
                     Point2<TF>{ p[ 0 ] + a, p[ 1 ] + b },
                     Point2<TF>{ p[ 0 ] + a, p[ 1 ] + a },
-                } ); // , { TF( num_grid ) }
+                }, { TF( num_grid ) } );
                 break;
             case 3:
                 TODO;

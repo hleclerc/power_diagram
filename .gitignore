@@ -1,9 +1,6 @@
 update_files.sh
-.power_diagram.config
-.power_diagram.creator.user
-.power_diagram.creator
-.power_diagram.files
-.power_diagram.includes
+.power_diagram.*
+*.kdev4
 build/
 ext/
 *.vtk

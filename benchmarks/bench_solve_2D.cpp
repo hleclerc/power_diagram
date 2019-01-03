@@ -48,7 +48,7 @@ int main( int argc, char **argv ) {
 
     // grid
     using Grid = PowerDiagram::Visitor::ZGrid<Pc>;
-    Grid grid( args[ "max-dirac-per-cell" ].as<int>(), 1e6 );
+    Grid grid( args[ "max-dirac-per-cell" ].as<int>(), 4e-3 );
 
     // Bounds
     using Bounds = PowerDiagram::Bounds::ConvexPolyhedronAssembly<Pc>;

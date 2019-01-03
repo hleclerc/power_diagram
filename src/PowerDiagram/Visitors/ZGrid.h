@@ -112,18 +112,17 @@ private:
     // tmp
     using                   RsTmp                  = std::vector<std::array<std::size_t,256>>;
     RsTmp                   rs_tmps;
-    std::vector<ZNode>      znodes;
-    std::vector<ZNode>      zcells;
+    std::vector<ZNode>      znodes;                ///< tmp znodes
+    std::vector<ZNode>      zcells;                ///<
 
     //
     TF                      step_length;
     TF                      grid_length;
     TF                      min_weight;
     TF                      max_weight;
-    TF                      div_weight;
     Pt                      min_point;
     Pt                      max_point;
-    std::vector<Grid>       grids;                     ///< for each weight span
+    std::vector<Grid>       grids;                 ///< for each weight span
 };
 
 } // namespace Visitor
