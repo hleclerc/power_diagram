@@ -1,0 +1,4 @@
+#ifndef TRIANGULATION_H
+#define TRIANGULATION_H
+
+#endif // TRIANGULATION_H
