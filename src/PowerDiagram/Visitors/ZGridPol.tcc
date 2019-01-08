@@ -270,14 +270,16 @@ void ZGridPol<Pc>::_update_the_polynomials( const Pt *positions, const TF *weigh
     }
 
     _polynomials.clear();
-    _subdivide_add_poly_rec( cp_positions.data(), cp_weights.data(), nb_diracs, _min_point, _max_point );
+    _subdivide_add_poly_rec( cp_positions.data(), cp_weights.data(), nb_diracs, _min_point, _max_point, 0 );
 }
 
 template<class Pc>
-void ZGridPol<Pc>::_subdivide_add_poly_rec( Pt *positions, TF *weights, TI nb_diracs, Pt p0, Pt p1 ) {
+void ZGridPol<Pc>::_subdivide_add_poly_rec( Pt *positions, TF *weights, TI nb_diracs, Pt p0, Pt p1, int num ) {
     using EM = Eigen::Matrix<TF,Eigen::Dynamic,Eigen::Dynamic>;
     using EV = Eigen::Matrix<TF,Eigen::Dynamic,1>;
     using std::pow;
+    using std::max;
+    using std::abs;
 
     constexpr int nc = dim * ( dim + 3 ) / 2 + 1;
 
@@ -307,15 +309,28 @@ void ZGridPol<Pc>::_subdivide_add_poly_rec( Pt *positions, TF *weights, TI nb_di
         }
     }
 
-    P( M );
-    P( V );
-
-    // solve and update the weights
-    Eigen::Cholesky<EM> C;
+    // solve and update the coefficients
+    Eigen::LLT<EM> C;
     C.compute( M );
     EV D = C.solve( V );
 
-    P( D );
+    // check error
+    TF err = 0;
+    for( TI n = 0; n < nb_diracs; ++n ) {
+        TF val = 0;
+        val += D[ 0 ];
+        val += D[ 1 ] * positions[ n ].x;
+        val += D[ 2 ] * positions[ n ].y;
+        val += D[ 3 ] * positions[ n ].x * positions[ n ].x;
+        val += D[ 4 ] * positions[ n ].x * positions[ n ].y;
+        val += D[ 5 ] * positions[ n ].y * positions[ n ].y;
+
+        err = max( err, abs( weights[ n ] - val  ) );
+    }
+
+    P( err );
+    // if ( num == 0 )
+    // _subdivide_add_poly_rec( Pt *positions, TF *weights, TI nb_diracs, Pt p0, Pt p1, int num );
 }
 
 //template<class Pc>

@@ -67,7 +67,7 @@ private:
         std::array<TF,nc>   coeffs;
     };
 
-    void                    _subdivide_add_poly_rec( Pt *positions, TF *weights, TI nb_diracs, Pt p0, Pt p1 );
+    void                    _subdivide_add_poly_rec( Pt *positions, TF *weights, TI nb_diracs, Pt p0, Pt p1, int num );
     void                    _update_the_polynomials( const Pt *positions, const TF *weights, TI nb_diracs );
     void                    _update_the_limits     ( const Pt *positions, TI nb_diracs );
     void                    _fill_the_grid         ( const Pt *positions, TI nb_diracs );
