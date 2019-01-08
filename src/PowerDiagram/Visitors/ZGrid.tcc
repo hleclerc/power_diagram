@@ -1,8 +1,8 @@
 #include "../system/StaticRange.h"
 #include "../system/RadixSort.h"
 #include "../system/Span.h"
+#include "FrontZgrid.h"
 #include "ZGrid.h"
-#include <queue>
 #include <cmath>
 
 // #define DISPLAY_nb_explored_cells
@@ -122,116 +122,8 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
 
 template<class Pc>
 int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size_t num, int num_thread )> &cb, const CP &starting_lc, const Pt *positions, const TF *weights, std::size_t nb_diracs, bool stop_if_void_lc ) {
+    using Front = FrontZgrid<ZGrid>;
     using std::sqrt;
-
-    #define ZIndex_USES_HEAP
-    #ifdef ZIndex_USES_HEAP
-    struct Front {
-        struct Item {
-            void write_to_stream( std::ostream &os ) const { os << num_grid << ":" << num_cell; }
-            bool operator<( const Item &that ) const { return dist > that.dist; }
-            TI   num_grid;
-            TI   num_cell;
-            TF   dist;
-        };
-
-        Front( TI& op_count, std::vector<std::vector<TI>> &visited ) : op_count( op_count ), visited( visited ) {
-        }
-
-        void init( const std::vector<Grid> &grids, TI num_grid, TI num_cell ) {
-            ++op_count;
-            set_visited( grids, num_grid, num_cell );
-            orig_cell_pos = grids[ num_grid ].cells[ num_cell ].pos;
-        }
-
-        void set_visited( const std::vector<Grid> &grids, TI num_grid, TI num_cell ) {
-            visited[ num_grid ][ num_cell ] = op_count;
-        }
-
-        TF dist( const Cell &cell ) {
-            TF res = 0;
-            for( int d = 0; d < dim; ++d ) {
-                TF v = cell.pos[ d ] - orig_cell_pos[ d ]; // we need abs to avoid the overflow
-                res += v * v;
-            }
-            return res;
-        }
-
-        void push_without_check( TI num_grid, TI num_cell, const std::vector<Grid> &grids ) {
-            items.push( Item{ num_grid, num_cell, dist( grids[ num_grid ].cells[ num_cell ] ) } );
-            set_visited( grids, num_grid, num_cell );
-        }
-
-        void push( TI num_grid, TI num_cell, const std::vector<Grid> &grids ) {
-            if ( visited[ num_grid ][ num_cell ] != op_count )
-                push_without_check( num_grid, num_cell, grids );
-        }
-
-        Item pop() {
-            Item res = items.top();
-            items.pop();
-            return res;
-        }
-
-        bool empty() const {
-            return items.empty();
-        }
-
-        Pt                            orig_cell_pos;
-        TI&                           op_count;
-        std::vector<std::vector<TI>>& visited;
-        std::priority_queue<Item>     items;
-    };
-    #else
-    struct Front {
-        struct Item {
-            TI   num_grid;
-            TI   num_cell;
-        };
-
-        Front( TI nb_grids ) : visited( nb_grids ) {
-            op_count = 0;
-            rand = 0;
-        }
-
-        void init( const std::vector<Grid> &grids, TI num_grid, TI num_cell ) {
-            for( std::size_t n = 0; n < grids.size(); ++n )
-                visited[ n ].resize( grids[ n ].cells.size(), op_count );
-
-            visited[ num_grid ][ num_cell ] = ++op_count;
-        }
-
-        void push_without_check( TI num_grid, TI num_cell, const std::vector<Grid> & ) {
-            visited[ num_grid ][ num_cell ] = op_count;
-            items.push_back( { num_grid, num_cell } );
-        }
-
-        void push( TI num_grid, TI num_cell, const std::vector<Grid> &grids ) {
-            if ( visited[ num_grid ][ num_cell ] != op_count ) {
-                visited[ num_grid ][ num_cell ] = op_count;
-                push_without_check( num_grid, num_cell, grids );
-            }
-        }
-
-        Item pop() {
-            TI n = rand % items.size();
-            Item res = items[ n ];
-            rand += 13;
-            items[ n ] = items[ items.size() - 1 ];
-            items.pop_back();
-            return res;
-        }
-
-        bool empty() const {
-            return items.empty();
-        }
-
-        TI                            op_count;
-        std::vector<std::vector<TI>>& visited;
-        std::vector<Item>             items;
-        TI                            rand;
-    };
-    #endif
 
     auto plane_cut = [&]( CP &lc, TI i0, TI i1 ) {
         Pt V = positions[ i1 ] - positions[ i0 ];
