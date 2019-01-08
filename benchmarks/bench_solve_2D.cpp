@@ -12,7 +12,6 @@
 //#include "../src/PowerDiagram/system/Tick.h"
 #include "set_up_diracs.h"
 
-
 //// nsmake cpp_flag -march=native
 //// nsmake cpp_flag -ffast-math
 //// nsmake cpp_flag -O5
@@ -30,6 +29,7 @@ int main( int argc, char **argv ) {
     cxxopts::Options options( argv[ 0 ], "bench solve");
     options.add_options()
         ( "m,max-dirac-per-cell"    , "...", cxxopts::value<int>()->default_value( "11" ) )
+        ( "r,max-delta-weight"      , "...", cxxopts::value<double>()->default_value( "1e40" ) )
         ( "d,distribution"          , "distribution name (regular, random, ...)", cxxopts::value<std::string>()->default_value( "regular" ) )
         ( "t,nb-threads"            , "...", cxxopts::value<int>()->default_value( "0" ) )
         ( "v,vtk-output"            , "", cxxopts::value<std::string>() )
@@ -48,7 +48,7 @@ int main( int argc, char **argv ) {
 
     // grid
     using Grid = PowerDiagram::Visitor::ZGrid<Pc>;
-    Grid grid( args[ "max-dirac-per-cell" ].as<int>(), 4e-3 );
+    Grid grid( args[ "max-dirac-per-cell" ].as<int>(), args[ "max-delta-weight" ].as<double>() );
 
     // Bounds
     using Bounds = PowerDiagram::Bounds::ConvexPolyhedronAssembly<Pc>;
@@ -60,11 +60,11 @@ int main( int argc, char **argv ) {
     solver.solve( positions.data(), weights.data(), weights.size() );
     //        P( solver.volume( diracs ), err );
 
-    if ( args.count( "vtk-output" ) ) {
-        VtkOutput<1> vtk_output( { "weight" } );
-        solver.display( vtk_output, positions.data(), weights.data(), weights.size() );
-        vtk_output.save( args[ "vtk-output" ].as<std::string>() + ".vtk" );
-    }
+    //    if ( args.count( "vtk-output" ) ) {
+    //        VtkOutput<1> vtk_output( { "weight" } );
+    //        solver.display( vtk_output, positions.data(), weights.data(), weights.size() );
+    //        vtk_output.save( args[ "vtk-output" ].as<std::string>() + ".vtk" );
+    //    }
 
     //    // display weights, on a voronoi diagram
     //    if ( args.count( "vtk-output" ) ) {

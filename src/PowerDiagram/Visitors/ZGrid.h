@@ -43,6 +43,8 @@ public:
     int                     for_each_laguerre_cell( const std::function<void( CP &lc, std::size_t num )> &f, const CP &starting_lc, const Pt *positions, const TF *weights, std::size_t nb_diracs, bool stop_if_void_lc = false ); ///< starting_lc can be a polygonal bound
     int                     for_each_laguerre_cell( const std::function<void( CP &lc, std::size_t num, int num_thread )> &f, const CP &starting_lc, const Pt *positions, const TF *weights, std::size_t nb_diracs, bool stop_if_void_lc = false ); ///< version with num_thread
 
+    bool                    check_sanity          ( const Pt *positions ) const;
+    std::size_t             nb_levels             () const { return grids.size(); }
     template<class V> void  display               ( V &vtk_output ) const; ///< for debug purpose
 
     // values used by init
@@ -52,9 +54,10 @@ public:
 
 private:
     struct                  Cell {
-        TI                  dpc_offset;                           ///< offsets in grid.dpc_values
-        TF                  size;                                 ///< integer size (must be before `pos`)
-        Pt                  pos;                                  ///< integer coordinates
+        TI                  dpc_offset;                 ///< offsets in grid.dpc_values
+        TZ                  zcoords;
+        TF                  size;
+        Pt                  pos;
     };
 
     struct                  Grid {
@@ -100,6 +103,7 @@ private:
 
     void                    fill_grid_using_zcoords( TI num_grid, const Pt *positions, const TF *weights, std::size_t nb_diracs );
     void                    repl_zcoords_by_ccoords( TI num_grid );
+    void                    find_englobing_cousins ( TI num_grid, const Pt *positions ); ///< find englobing cells for each dirac (and for each grid). Must be done after repl_zcoords_by_ccoords
     void                    update_the_limits      ( const Pt *positions, const TF *weights, std::size_t nb_diracs );
     void                    update_neighbors       ( TI num_grid );
     void                    fill_the_grids         ( const Pt *positions, const TF *weights, std::size_t nb_diracs );
@@ -123,6 +127,9 @@ private:
     Pt                      min_point;
     Pt                      max_point;
     std::vector<Grid>       grids;                 ///< for each weight span
+
+public:
+    std::vector<Cell> fc;
 };
 
 } // namespace Visitor

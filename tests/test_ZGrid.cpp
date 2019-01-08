@@ -73,37 +73,42 @@ TEST_CASE( "several ZGrids" ) {
 
     std::vector<Grid::Pt> positions;
     std::vector<Grid::TF> weights;
-    for( double i = 0; i < 50; i += 2 ) {
-        positions.push_back( { 0, i } );
-        weights.push_back( 1.0 );
+    for( double i = 0; i < 50; i += 1 ) {
+        positions.push_back( { 0.0, i + 0.5 } );
+        weights.push_back( 0.0 );
     }
-    for( double i = 0; i < 50; i += 2 ) {
-        positions.push_back( { 49, i } );
-        weights.push_back( 2.0 );
+    for( double i = 0; i < 50; i += 1 ) {
+        positions.push_back( { 50.0, i + 0.5 } );
+        weights.push_back( 1000.0 );
     }
 
     Bounds bounds;
-    bounds.add_box( { -1, -1 }, { 50, 50 }, 1.0, -1 );
+    bounds.add_box( { 0, 0 }, { 50, 50 }, 1.0, -1 );
 
-    Grid grid( 2, 0.75 );
+    Grid grid( 2, 800.0 );
     grid.update( positions.data(), weights.data(), positions.size() );
 
     std::atomic<int> nb_cp( 0 );
+    VtkOutput<1> vo_pd( { "num" } );
+    std::map<int,std::atomic<int>> nb_cp_by_area;
+    const int cprec = 10000;
+    nb_cp_by_area[ 35 * cprec ] = 0;
+    nb_cp_by_area[ 15 * cprec ] = 0;
     grid.for_each_laguerre_cell( [&]( auto &lc, std::size_t num_dirac_0 ) {
+        bounds.for_each_intersection( lc, [&]( auto &cp, auto space_func ) {
+            cp.display( vo_pd, { 1.0 * num_dirac_0 } );
+            nb_cp_by_area[ cp.measure() * cprec ]++;
+        } );
         nb_cp++;
     }, bounds.englobing_convex_polyhedron(), positions.data(), weights.data(), positions.size() );
+    vo_pd.save( "vtk/pd.vtk" );
 
     CHECK( nb_cp == weights.size() );
+    CHECK( nb_cp_by_area.size() == 2 );
+    CHECK( nb_cp_by_area[ 35 * cprec ] == 50 );
+    CHECK( nb_cp_by_area[ 15 * cprec ] == 50 );
 
-    // VtkOutput<1> vo_grid( { "num" } );
-    // grid.display( vo_grid );
-    // vo_grid.save( "vtk/grid.vtk" );
-
-    // VtkOutput<1> vo_pd( { "num" } );
-    // grid.for_each_laguerre_cell( [&]( auto &lc, std::size_t num_dirac_0 ) {
-    //     bounds.for_each_intersection( lc, [&]( auto &cp, auto space_func ) {
-    //         cp.display( vo_pd, { 1.0 * num_dirac_0 } );
-    //     } );
-    // }, bounds.englobing_convex_polyhedron(), positions.data(), weights.data(), positions.size() );
-    // vo_pd.save( "vtk/pd.vtk" );
+    VtkOutput<1> vo_grid( { "num" } );
+    grid.display( vo_grid );
+    vo_grid.save( "vtk/grid.vtk" );
 }

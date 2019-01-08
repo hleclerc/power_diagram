@@ -28,6 +28,7 @@ public:
 
     // by products
     std::vector<TF> timings_solve;
+    std::vector<TF> timings_cgal;
     std::vector<TF> timings_grid;
     std::vector<TF> timings_der;
     std::vector<TF> old_weights;

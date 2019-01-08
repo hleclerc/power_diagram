@@ -38,49 +38,78 @@ bool ZGrid<Pc>::may_cut( const CP &lc, TI i0, const Grid &cr_grid, const Cell &c
     using std::pow;
     using std::abs;
 
-    auto dp = positions[ i0 ];
-    auto dw = weights  [ i0 ];
+    auto c0 = positions[ i0 ];
+    auto w0 = weights  [ i0 ];
 
     //
     if ( ball_cut ) {
-        // get min dist pow 2
-        TF md = 0;
+        TF md = 0; // min dist pow 2
         for( size_t d = 0; d < dim; ++d ) {
-            TF o = dp[ d ] - cr_cell.pos[ d ];
+            TF o = c0[ d ] - cr_cell.pos[ d ];
             if ( o > 0 )
                 o = max( TF( 0 ), o - cr_cell.size );
             md += pow( o, 2 );
         }
 
-        return md < pow( sqrt( cr_grid.max_weight ) + sqrt( dw ), 2 );
+        return md < pow( sqrt( cr_grid.max_weight ) + sqrt( w0 ), 2 );
     }
 
+    //
+    if ( w0 > cr_grid.min_weight ) {
+        TF d2 = w0 - cr_grid.min_weight;
+        if ( d2 > 0 ) {
+            //
+            TF max_cur_dist = 0;
+            for( std::size_t num_lc_point = 0; num_lc_point < lc.nb_points; ++num_lc_point )
+                max_cur_dist = max( max_cur_dist, norm_2_p2( lc.point( num_lc_point ) ) );
+            if ( max_cur_dist > 4 * d2 ) {
+                TF dx = cr_cell.pos[ 0 ] - c0[ 0 ];
+                TF dy = cr_cell.pos[ 1 ] - c0[ 1 ];
+                TF x2 = min( pow( dx, 2 ), pow( dx + cr_cell.size, 2 ) );
+                TF y2 = min( pow( dy, 2 ), pow( dy + cr_cell.size, 2 ) );
+                if ( x2 + y2 < d2 )
+                    return true;
+            }
+        }
+    }
+
+    //
     TF l0 = cr_cell.size;
     auto test_line = [&]( Pt A, Pt B, Pt p ) {
-        TF c2 = l0 * l0;
-        TF c1 = dot( B - A, p - A );
-        TF c0 = norm_2_p2( p - A ) - norm_2_p2( dp - p ) + dw - cr_grid.max_weight;
-        if ( c1 > 0 && c1 < c2 && c2 * c0 - c1 * c1 < 0 )
+        TF s2 = l0 * l0;
+        TF s1 = dot( p - A, B - A );
+        TF s0 = ( norm_2_p2( p - A ) - cr_grid.max_weight ) - ( norm_2_p2( c0 - p ) - w0 );
+        if ( s1 > 0 && s1 < s2 && s2 * s0 - s1 * s1 < 0 )
             return true;
-        return c0 < 0 || c2 - 2 * c1 + c0 < 0;
+        return s0 < 0 || s2 - 2 * s1 + s0 < 0;
     };
 
-    Pt c0;
-    for( int d = 0; d < dim; ++d )
-        c0[ d ] = cr_cell.pos[ d ];
+    TF dx = cr_cell.pos[ 0 ] < c0[ 0 ] ? l0 : 0;
+    TF dy = cr_cell.pos[ 1 ] < c0[ 1 ] ? l0 : 0;
 
-    TF dy = c0[ 1 ] < dp[ 1 ] ? l0 : 0;
-    Pt PA { c0[ 0 ]     , c0[ 1 ] + dy };
-    Pt PB { c0[ 0 ] + l0, c0[ 1 ] + dy };
+    Pt PA { cr_cell.pos[ 0 ]     , cr_cell.pos[ 1 ] + dy };
+    Pt PB { cr_cell.pos[ 0 ] + l0, cr_cell.pos[ 1 ] + dy };
 
-    TF dx = c0[ 0 ] < dp[ 0 ] ? l0 : 0;
-    Pt PC { c0[ 0 ] + dx, c0[ 1 ]      };
-    Pt PD { c0[ 0 ] + dx, c0[ 1 ] + l0 };
+    Pt PC { cr_cell.pos[ 0 ] + dx, cr_cell.pos[ 1 ]      };
+    Pt PD { cr_cell.pos[ 0 ] + dx, cr_cell.pos[ 1 ] + l0 };
 
     for( std::size_t num_lc_point = 0; num_lc_point < lc.nb_points; ++num_lc_point ) {
         if ( test_line( PA, PB, lc.point( num_lc_point ) ) ) return true;
         if ( test_line( PC, PD, lc.point( num_lc_point ) ) ) return true;
     }
+
+    //    Pt PA { cr_cell.pos[ 0 ]     , cr_cell.pos[ 1 ]      };
+    //    Pt PB { cr_cell.pos[ 0 ] + l0, cr_cell.pos[ 1 ]      };
+    //    Pt PC { cr_cell.pos[ 0 ] + l0, cr_cell.pos[ 1 ] + l0 };
+    //    Pt PD { cr_cell.pos[ 0 ]     , cr_cell.pos[ 1 ] + l0 };
+
+    //    for( std::size_t num_lc_point = 0; num_lc_point < lc.nb_points; ++num_lc_point ) {
+    //        if ( test_line( PA, PB, lc.point( num_lc_point ) ) ) return true;
+    //        if ( test_line( PB, PC, lc.point( num_lc_point ) ) ) return true;
+    //        if ( test_line( PC, PD, lc.point( num_lc_point ) ) ) return true;
+    //        if ( test_line( PD, PA, lc.point( num_lc_point ) ) ) return true;
+    //    }
+
     return false;
 }
 
@@ -99,6 +128,7 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
     #ifdef ZIndex_USES_HEAP
     struct Front {
         struct Item {
+            void write_to_stream( std::ostream &os ) const { os << num_grid << ":" << num_cell; }
             bool operator<( const Item &that ) const { return dist > that.dist; }
             TI   num_grid;
             TI   num_cell;
@@ -109,8 +139,13 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
         }
 
         void init( const std::vector<Grid> &grids, TI num_grid, TI num_cell ) {
+            ++op_count;
+            set_visited( grids, num_grid, num_cell );
             orig_cell_pos = grids[ num_grid ].cells[ num_cell ].pos;
-            visited[ num_grid ][ num_cell ] = ++op_count;
+        }
+
+        void set_visited( const std::vector<Grid> &grids, TI num_grid, TI num_cell ) {
+            visited[ num_grid ][ num_cell ] = op_count;
         }
 
         TF dist( const Cell &cell ) {
@@ -124,14 +159,12 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
 
         void push_without_check( TI num_grid, TI num_cell, const std::vector<Grid> &grids ) {
             items.push( Item{ num_grid, num_cell, dist( grids[ num_grid ].cells[ num_cell ] ) } );
-            visited[ num_grid ][ num_cell ] = op_count;
+            set_visited( grids, num_grid, num_cell );
         }
 
         void push( TI num_grid, TI num_cell, const std::vector<Grid> &grids ) {
-            if ( visited[ num_grid ][ num_cell ] != op_count ) {
-                visited[ num_grid ][ num_cell ] = op_count;
+            if ( visited[ num_grid ][ num_cell ] != op_count )
                 push_without_check( num_grid, num_cell, grids );
-            }
         }
 
         Item pop() {
@@ -202,11 +235,10 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
 
     auto plane_cut = [&]( CP &lc, TI i0, TI i1 ) {
         Pt V = positions[ i1 ] - positions[ i0 ];
-        TF d = norm_2( V );
-        TF i = 1.0 / d;
-        Pt N = i * V;
-        TF x = 0.5 * ( d + i * ( weights[ i0 ] - weights[ i1 ] ) );
-        lc.plane_cut( positions[ i0 ] + x * N, N, i1 );
+        TF n = norm_2_p2( V );
+        TF x = TF( 1 ) + ( weights[ i0 ] - weights[ i1 ] ) / n;
+        TF i = TF( 1 ) / sqrt( n );
+        lc.plane_cut( positions[ i0 ] + TF( 0.5 ) * x * V, i * V, i1 );
     };
 
     // vectors for stuff that will be reused inside the execution threads
@@ -251,14 +283,15 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
                     for( TI num_ng_cell : Span<TI>{ grid.ng_indices.data() + grid.ng_offsets[ num_cell + 0 ], grid.ng_indices.data() + grid.ng_offsets[ num_cell + 1 ] } )
                         front.push_without_check( num_grid, num_ng_cell, grids );
 
-                    // // => items of the grids for != weight containing the dirac
+                    // => items from the grids made for != weight (containing the dirac position)
                     for( std::size_t num_pa_grid = 0; num_pa_grid < grids.size(); ++num_pa_grid ) {
                         if ( num_pa_grid != num_grid ) {
                             Grid &pa_grid = grids[ num_pa_grid ];
                             TI num_pa_cell = pa_grid.cell_index_vs_dirac_number[ num_dirac ];
 
                             // cut with items in pa cell
-                            for( TI num_cr_dirac : Span<TI>{ pa_grid.dpc_values.data() + pa_grid.cells[ num_pa_cell + 1 ].dpc_offset, pa_grid.dpc_values.data() + pa_grid.cells[ num_pa_cell + 1 ].dpc_offset } )
+                            front.set_visited( grids, num_pa_grid, num_pa_cell );
+                            for( TI num_cr_dirac : Span<TI>{ pa_grid.dpc_values.data() + pa_grid.cells[ num_pa_cell + 0 ].dpc_offset, pa_grid.dpc_values.data() + pa_grid.cells[ num_pa_cell + 1 ].dpc_offset } )
                                 plane_cut( lc, num_dirac, num_cr_dirac );
 
                             // add neighbors in the front
@@ -278,7 +311,6 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
                         const Cell &cr_cell = cr_grid.cells[ cr.num_cell ];
 
                         // if no cut is possible, we don't go further.
-                        // The cost of the test being far from negligible, we don't make it for close cells
                         if ( may_cut( lc, num_dirac, cr_grid, cr_cell, positions, weights ) == false )
                             continue;
 
@@ -309,13 +341,46 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
     }
 
     #ifdef DISPLAY_nb_explored_cells
-    TI nen = 0;
+    TI nen = 0, tot = 0;
     for( TI n : nb_explored_cells )
         nen += n;
-    P( grids[ 0 ].cells.size(), nen / nb_diracs );
+    for( const Grid &grid : grids )
+        tot += grid.cells.size();
+    P( tot, nen / nb_diracs );
     #endif // DISPLAY_nb_explored_cells
 
     return err;
+}
+
+template<class Pc>
+bool ZGrid<Pc>::check_sanity( const Pt *positions ) const {
+    if ( grids.size() == 0 )
+        return false;
+
+    // check diracs appear only once
+    std::vector<bool> c( grids[ 0 ].cell_index_vs_dirac_number.size(), false );
+    for( const Grid &grid : grids ) {
+        ASSERT( grid.cell_index_vs_dirac_number.size() == grids[ 0 ].cell_index_vs_dirac_number.size(), "" );
+        for( std::size_t num_cell = 0; num_cell < grid.cells.size() - 1; ++num_cell ) {
+            for( TI num_dirac : Span<TI>{ grid.dpc_values.data() + grid.cells[ num_cell + 0 ].dpc_offset, grid.dpc_values.data() + grid.cells[ num_cell + 1 ].dpc_offset } ) {
+                ASSERT( c[ num_dirac ] == false, "" );
+                c[ num_dirac ] = true;
+            }
+        }
+    }
+
+    // check cell_index_vs_dirac_number: diracs must be inside
+    for( std::size_t num_dirac = 0; num_dirac < grids[ 0 ].cell_index_vs_dirac_number.size(); ++num_dirac ) {
+        for( const Grid &grid : grids ) {
+            const Cell &cell = grid.cells[ grid.cell_index_vs_dirac_number[ num_dirac ] ];
+            for( std::size_t d = 0; d < dim; ++d ) {
+                ASSERT( positions[ num_dirac ][ d ] <= cell.pos[ d ] + cell.size, "" );
+                ASSERT( positions[ num_dirac ][ d ] >= cell.pos[ d ], "" );
+            }
+        }
+    }
+
+    return true;
 }
 
 template<class Pc>
@@ -479,7 +544,7 @@ void ZGrid<Pc>::fill_grid_using_zcoords( TI num_grid, const Pt *positions, const
     }
 
     // prepare cell_index_vs_dirac_number => we will set the values for the diracs in this grid
-    grid.cell_index_vs_dirac_number.resize( nb_diracs, 666 );
+    grid.cell_index_vs_dirac_number.resize( nb_diracs, 666000 );
 
     // sorting w.r.t. zcoords
     znodes.reserve( 2 * znodes.size() );
@@ -565,10 +630,10 @@ template<class Pc>
 void ZGrid<Pc>::fill_the_grids( const Pt *positions, const TF *weights, std::size_t nb_diracs ) {
     static_assert( sizeof( TZ ) >= sizeof_zcoords, "zcoords types is not large enough" );
 
-    using std::log2;
-
     // assign diracs to grids
     if ( grids.size() > 1 ) {
+        for( std::size_t num_grid = 0; num_grid < grids.size(); ++num_grid )
+            grids[ num_grid ].dirac_indices.clear();
         for( std::size_t num_dirac = 0; num_dirac < nb_diracs; ++num_dirac ) {
             int num_grid = ( weights[ num_dirac ] - min_weight ) / max_delta_weight_per_grid;
             grids[ num_grid ].dirac_indices.push_back( num_dirac );
@@ -582,25 +647,9 @@ void ZGrid<Pc>::fill_the_grids( const Pt *positions, const TF *weights, std::siz
         repl_zcoords_by_ccoords( num_grid );
     }
 
-    // find englobing cells for each dirac (and for each grid)
-    for( std::size_t num_grid = 0; num_grid < grids.size(); ++num_grid ) {
-        for( std::size_t num_ot_grid = 0; num_ot_grid < grids.size(); ++num_ot_grid ) {
-            if ( num_ot_grid == num_grid )
-                continue;
-
-            znodes.clear();
-            for( TI num_dirac : grids[ num_grid ].dirac_indices )
-                znodes.push_back( { zcoords_for( positions[ num_dirac ] ), num_dirac } );
-
-            znodes.reserve( 2 * znodes.size() );
-            ZNode *out = radix_sort( znodes.data() + znodes.size(), znodes.data(), znodes.size(), N<sizeof_zcoords>(), rs_tmps );
-            for( std::size_t i = 0, j = 0; i < znodes.size(); ++i ) {
-                while ( zcells[ j ].zcoords <= out[ i ].zcoords )
-                    ++j;
-                grids[ num_ot_grid ].cell_index_vs_dirac_number[ out[ i ].index ] = j - 1;
-            }
-        }
-    }
+    // cousins
+    for( std::size_t num_grid = 0; num_grid < grids.size(); ++num_grid )
+        find_englobing_cousins( num_grid, positions );
 }
 
 template<class Pc> template<class C>
@@ -683,6 +732,7 @@ void ZGrid<Pc>::repl_zcoords_by_ccoords( TI num_grid ) {
 
         Cell &c = grid.cells[ num_cell ];
         c.size = step_length * round( pow( n.zcoords - p.zcoords, 1.0 / dim ) );
+        c.zcoords = p.zcoords;
         c.dpc_offset = p.index;
 
         StaticRange<dim>::for_each( [&]( auto d ) {
@@ -696,8 +746,35 @@ void ZGrid<Pc>::repl_zcoords_by_ccoords( TI num_grid ) {
 
     Cell &c = grid.cells.back();
     c.dpc_offset = zcells.back().index;
+    c.zcoords = zcells.back().zcoords;
     c.size = 0;
     c.pos = max_point;
+}
+
+template<class Pc>
+void ZGrid<Pc>::find_englobing_cousins( TI num_grid, const Pt *positions ) {
+    if ( grids.size() == 1 )
+        return;
+
+    // znodes for diracs of current grid
+    znodes.clear();
+    for( TI num_dirac : grids[ num_grid ].dirac_indices )
+        znodes.push_back( { zcoords_for( positions[ num_dirac ] ), num_dirac } );
+
+    // sort znodes
+    znodes.reserve( 2 * znodes.size() );
+    ZNode *out = radix_sort( znodes.data() + znodes.size(), znodes.data(), znodes.size(), N<sizeof_zcoords>(), rs_tmps );
+
+    //
+    for( std::size_t num_ot_grid = 0; num_ot_grid < grids.size(); ++num_ot_grid ) {
+        if ( num_ot_grid != num_grid ) {
+            for( std::size_t i = 0, j = 0; i < znodes.size(); ++i ) {
+                while ( grids[ num_ot_grid ].cells[ j ].zcoords <= out[ i ].zcoords )
+                    ++j;
+                grids[ num_ot_grid ].cell_index_vs_dirac_number[ out[ i ].index ] = j - 1;
+            }
+        }
+    }
 }
 
 } // namespace Visitor

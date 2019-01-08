@@ -1,14 +1,16 @@
 #include "get_der_integrals_wrt_weights.h"
 #include "OptimalTransportSolver.h"
+#include "traversal_cgal.h"
 // #include "AmgclSolver.h"
 #include "EigenSolver.h"
 #include "system/Tick.h"
+#include "VtkOutput.h"
 
 namespace PowerDiagram {
 
 template<class Grid, class Bounds>
 OptimalTransportSolver<Grid, Bounds>::OptimalTransportSolver(Grid *grid, Bounds *bounds) : bounds( *bounds ), grid( *grid ) {
-    max_nb_iter = 100;
+    max_nb_iter = 10;
 }
 
 template<class Grid, class Bounds>
@@ -20,11 +22,19 @@ void OptimalTransportSolver<Grid, Bounds>::solve( const Pt *positions, TF *weigh
     for( std::size_t i = 0; i < nb_diracs; ++i )
         old_weights[ i ] = weights[ i ];
 
+    // max_nb_iter = 4;
+
     for( std::size_t num_iter = 0; num_iter < max_nb_iter; ++num_iter ) {
         // grid
         auto t0 = Tick::get_time();
         grid.update( positions, weights, nb_diracs, num_iter == 0, true );
         timings_grid.push_back( Tick::elapsed_since( t0 ) );
+
+        //        P( grid.check_sanity( positions ) );
+
+        //        VtkOutput<1> vo_grid( { "num" } );
+        //        grid.display( vo_grid );
+        //        vo_grid.save( "vtk/grid.vtk" );
 
         // der
         t0 = Tick::get_time();
@@ -33,6 +43,7 @@ void OptimalTransportSolver<Grid, Bounds>::solve( const Pt *positions, TF *weigh
         m_values[ 0 ] *= 2;
 
         // go back if pb
+        // P( grid.nb_levels(), error );
         if ( error ) {
             TF ratio = 0.1;
             for( std::size_t i = 0; i < nb_diracs; ++i )
@@ -50,6 +61,14 @@ void OptimalTransportSolver<Grid, Bounds>::solve( const Pt *positions, TF *weigh
         es.solve( dw, m_offsets, m_columns, m_values, v_values );
         timings_solve.push_back( Tick::elapsed_since( t0 ) );
 
+        //        VtkOutput<1> vtk_output( { "weight" } );
+        //        display( vtk_output, positions, weights, nb_diracs );
+        //        vtk_output.save( "vtk/pd.vtk" );
+
+        //        t0 = Tick::get_time();
+        //        traversal_cgal( reinterpret_cast<const TF *>( positions ), weights, nb_diracs );
+        //        timings_cgal.push_back( Tick::elapsed_since( t0 ) );
+
         TF mdw = 0;
         for( std::size_t i = 0; i < nb_diracs; ++i ) {
             mdw = max( mdw, abs( dw[ i ] ) );
@@ -63,6 +82,7 @@ void OptimalTransportSolver<Grid, Bounds>::solve( const Pt *positions, TF *weigh
 
     P( timings_grid  );
     P( timings_der   );
+    P( timings_cgal  );
     P( timings_solve );
 }
 
