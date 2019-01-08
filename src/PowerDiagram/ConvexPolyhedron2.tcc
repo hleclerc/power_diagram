@@ -1221,6 +1221,20 @@ void ConvexPolyhedron2<Pc,CI>::for_each_approx_seg( const std::function<void( Pt
     f( point( 0 ) );
 }
 
+template<class Pc, class CI>
+void ConvexPolyhedron2<Pc,CI>::for_each_simplex( const std::function<void( CI, CI )> &f ) const {
+    for( std::size_t i1 = 0, i0 = nb_points - 1; i1 < nb_points; i0 = i1++ )
+        if ( allow_ball_cut == false || ( arcs[ i0 ] == false && arcs[ i1 ] == false ) )
+            f( cut_ids[ i0 ], cut_ids[ i1 ] );
+}
+
+template<class Pc, class CI>
+void ConvexPolyhedron2<Pc,CI>::for_each_bound( const std::function<void(Pt,Pt,CI)> &f ) const {
+    for( std::size_t i1 = 0, i0 = nb_points - 1; i1 < nb_points; i0 = i1++ )
+        if ( allow_ball_cut == false || arcs[ i0 ] == false )
+            f( point( i0 ), point( i1 ), cut_ids[ i0 ] );
+}
+
 template<class Pc,class CI>
 void ConvexPolyhedron2<Pc,CI>::for_each_node( const std::function<void( Pt )> &f ) const {
     for( std::size_t i = 0; i < nb_points; ++i )

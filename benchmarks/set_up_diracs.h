@@ -69,6 +69,27 @@ void set_up_diracs( std::vector<Pt> &positions, std::vector<TF> &weights, std::s
         return;
     }
 
+    if ( distribution == "lines_reg" ) {
+        positions.resize( 0 );
+        weights.resize( 0 );
+        for( std::size_t i = 0; i < nb_diracs / 2; ++i ) {
+            double y = 1.0 * ( i + 0.5 ) / nb_diracs;
+            double x = 0.1 + 1e-3 * rand() / RAND_MAX;
+            double w = 1;
+            positions.push_back( { x, y } );
+            weights.push_back( w );
+        }
+        for( std::size_t i = 0; i < nb_diracs / 2; ++i ) {
+            double y = 1.0 * ( i + 0.5 ) / nb_diracs;
+            double x = 0.9 - 0.5 * y + 1e-3 * rand() / RAND_MAX;
+            double w = 1;
+            positions.push_back( { x, y } );
+            weights.push_back( w );
+        }
+
+        return;
+    }
+
     if ( distribution == "concentration" ) {
         positions.resize( 0 );
         weights.resize( 0 );
@@ -102,6 +123,19 @@ void set_up_diracs( std::vector<Pt> &positions, std::vector<TF> &weights, std::s
                 positions.push_back( { x, y } );
                 weights.push_back( 1 );
             }
+        }
+
+        return;
+    }
+
+    if ( distribution.size() > 4 && distribution.substr( distribution.size() - 4 ) == ".xyw" ) {
+        std::ifstream f( distribution.c_str() );
+        positions.resize( 0 );
+        weights.resize( 0 );
+        double x, y, w;
+        while ( f >> x >> y >> w ) {
+            positions.push_back( { x, y } );
+            weights.push_back( w );
         }
 
         return;

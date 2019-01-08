@@ -1,17 +1,12 @@
 #include "../system/StaticRange.h"
 #include "../system/RadixSort.h"
 #include "../system/Span.h"
+#include "internal/ZCoords.h"
 #include "FrontZgrid.h"
 #include "ZGrid.h"
 #include <cmath>
 
 // #define DISPLAY_nb_explored_cells
-
-extern const std::uint32_t morton_256_2D_x[ 256 ];
-extern const std::uint32_t morton_256_2D_y[ 256 ];
-extern const std::uint32_t morton_256_3D_x[ 256 ];
-extern const std::uint32_t morton_256_3D_y[ 256 ];
-extern const std::uint32_t morton_256_3D_z[ 256 ];
 
 namespace PowerDiagram {
 namespace Visitor {
@@ -40,6 +35,8 @@ bool ZGrid<Pc>::may_cut( const CP &lc, TI i0, const Grid &cr_grid, const Cell &c
 
     auto c0 = positions[ i0 ];
     auto w0 = weights  [ i0 ];
+
+    return true;
 
     //
     if ( ball_cut ) {
@@ -169,7 +166,7 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
                             plane_cut( lc, num_dirac, num_cr_dirac );
 
                     // front
-                    front.init( grids, num_grid, num_cell );
+                    front.init( grids, num_grid, num_cell, positions[ num_dirac ], weights[ num_dirac ] );
 
                     // => neighbors in the same grid
                     for( TI num_ng_cell : Span<TI>{ grid.ng_indices.data() + grid.ng_offsets[ num_cell + 0 ], grid.ng_indices.data() + grid.ng_offsets[ num_cell + 1 ] } )
@@ -298,7 +295,7 @@ void ZGrid<Pc>::update_the_limits( const Pt *positions, const TF *weights, std::
 
     int nb_grids = 1 + floor( ( max_weight - min_weight ) / max_delta_weight_per_grid );
     grids.resize( nb_grids );
-    P( nb_grids );
+    // P( nb_grids );
     
     //
     grid_length = 0;
@@ -349,16 +346,18 @@ void ZGrid<Pc>::update_neighbors( TI num_grid ) {
             if ( zcells[ index_nbor + 1 ].zcoords < lim ) {
                 std::array<TZ,dim> tgts;
                 StaticRange<dim>::for_each( [&]( auto d ) {
-                    tgts[ d ] = zcells[ index_node ].zcoords & _ZcoordsOnesOnAxis<d.val>::value;
-                    tgts[ d ] = ( tgts[ d ] | _ZcoordsZerosOnAxis<d.val>::value ) + off;
-                    tgts[ d ] = tgts[ d ] & _ZcoordsOnesOnAxis<d.val>::value;
+                    using Zooa = typename ZCoords<TZ,dim,nb_bits_per_axis,sizeof_zcoords>::template _ZcoordsOnesOnAxis<d.val>;
+                    tgts[ d ] = zcells[ index_node ].zcoords & Zooa::value;
+                    tgts[ d ] = ( tgts[ d ] | Zooa::value ) + off;
+                    tgts[ d ] = tgts[ d ] & Zooa::value;
                 } );
 
                 ++index_nbor;
                 do {
                     bool touching = false;
                     StaticRange<dim>::for_each( [&]( auto d ) {
-                        TZ val = zcells[ index_nbor ].zcoords & _ZcoordsOnesOnAxis<d.val>::value;
+                        using Zooa = typename ZCoords<TZ,dim,nb_bits_per_axis,sizeof_zcoords>::template _ZcoordsOnesOnAxis<d.val>;
+                        TZ val = zcells[ index_nbor ].zcoords & Zooa::value;
                         touching |= val == tgts[ d ];
                     } );
                     if ( touching )
@@ -606,7 +605,8 @@ void ZGrid<Pc>::display( V &vtk_output ) const {
 
 template<class Pc> template<int axis>
 typename ZGrid<Pc>::TZ ZGrid<Pc>::ng_zcoord( TZ zcoords, TZ off, N<axis> ) const {
-    TZ ff0 = _ZcoordsZerosOnAxis<axis>::value;
+    using Zzoa = typename ZCoords<TZ,dim,nb_bits_per_axis,sizeof_zcoords>::template _ZcoordsZerosOnAxis<axis>;
+    TZ ff0 = Zzoa::value;
     TZ res = ( ( zcoords | ff0 ) + off ) & ~ ff0;
     return res | ( zcoords & ff0 );
 

@@ -51,6 +51,8 @@ public:
     // information
     void                      for_each_boundary_measure ( FunctionEnum::Unit, const std::function<void( TF boundary_measure, CI id )> &f ) const;
     void                      for_each_approx_seg       ( const std::function<void( Pt )> &f, TF max_ratio_area_error = 1e-1 ) const; ///<
+    void                      for_each_simplex          ( const std::function<void( CI num_0, CI num_1 )> &f ) const;
+    void                      for_each_bound            ( const std::function<void( Pt p0, Pt p1, CI id )> &f ) const;
     void                      for_each_node             ( const std::function<void( Pt v )> &f ) const;
 
     void                      write_to_stream           ( std::ostream &os ) const;

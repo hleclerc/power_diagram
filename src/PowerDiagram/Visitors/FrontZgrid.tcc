@@ -1,14 +1,17 @@
 #include "FrontZgrid.h"
+#include <cmath>
 
 template<class ZG>
 FrontZgrid<ZG>::FrontZgrid( TI& op_count, std::vector<std::vector<TI>> &visited ) : op_count( op_count ), visited( visited ) {
 }
 
 template<class ZG> template<class Grid>
-void FrontZgrid<ZG>::init( const std::vector<Grid> &grids, TI num_grid, TI num_cell ) {
+void FrontZgrid<ZG>::init( const std::vector<Grid> &grids, TI num_grid, TI num_cell, Pt position, TF weight ) {
     ++op_count;
     set_visited( grids, num_grid, num_cell );
-    orig_cell_pos = grids[ num_grid ].cells[ num_cell ].pos;
+
+    orig_position = position;
+    orig_weight = weight;
 }
 
 template<class ZG> template<class Grid>
@@ -17,10 +20,17 @@ void FrontZgrid<ZG>::set_visited( const std::vector<Grid> &grids, TI num_grid, T
 }
 
 template<class ZG> template<class Cell>
-typename FrontZgrid<ZG>::TF FrontZgrid<ZG>::dist( const Cell &cell ) {
+typename FrontZgrid<ZG>::TF FrontZgrid<ZG>::dist( const Cell &cell, TF max_weight ) {
+    using std::sqrt;
+
+    //    Pt V = cell.pos - orig_position;
+    //    TF n = norm_2_p2( V );
+    //    TF x = TF( 1 ) + ( orig_weight - max_weight ) / n;
+    //    return x * sqrt( n );
+
     TF res = 0;
     for( int d = 0; d < dim; ++d ) {
-        TF v = cell.pos[ d ] - orig_cell_pos[ d ]; // we need abs to avoid the overflow
+        TF v = cell.pos[ d ] - orig_position[ d ]; // we need abs to avoid the overflow
         res += v * v;
     }
     return res;
@@ -28,7 +38,7 @@ typename FrontZgrid<ZG>::TF FrontZgrid<ZG>::dist( const Cell &cell ) {
 
 template<class ZG> template<class Grid>
 void FrontZgrid<ZG>::push_without_check( TI num_grid, TI num_cell, const std::vector<Grid> &grids ) {
-    items.push( Item{ num_grid, num_cell, dist( grids[ num_grid ].cells[ num_cell ] ) } );
+    items.push( Item{ num_grid, num_cell, dist( grids[ num_grid ].cells[ num_cell ], grids[ num_grid ].max_weight ) } );
     set_visited( grids, num_grid, num_cell );
 }
 

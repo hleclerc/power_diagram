@@ -1,2 +1,2 @@
 #include "IntSpiral.h"
-#include "(make_IntSpiral.cpp).h"
+#include "internal/(make_IntSpiral.cpp).h"

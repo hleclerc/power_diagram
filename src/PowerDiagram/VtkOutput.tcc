@@ -99,7 +99,7 @@ void VtkOutput<nb_cell_fields,TF>::add_lines( const std::vector<P2> &p, const CV
 }
 
 template<int nb_cell_fields,class TF>
-void VtkOutput<nb_cell_fields,TF>::add_polygon(const std::vector<PT> &p, const CV &cell_values ) {
+void VtkOutput<nb_cell_fields,TF>::add_polygon( const std::vector<PT> &p, const CV &cell_values ) {
     if ( p.size() < 2 )
         return;
     _polygons.push_back( { p, cell_values } );

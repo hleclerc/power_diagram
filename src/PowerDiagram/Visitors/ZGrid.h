@@ -78,29 +78,6 @@ private:
         TI                  index;
     };
 
-    template                <int num_axis,int _cur_bit=dim*nb_bits_per_axis-1>
-    struct                  _ZcoordsZerosOnAxis {
-        static constexpr TZ v_loc = TZ( _cur_bit % dim == num_axis ? 0 : 1 ) << _cur_bit;
-        static constexpr TZ value = v_loc | _ZcoordsZerosOnAxis<num_axis,_cur_bit-1>::value;
-    };
-
-    template                <int num_axis>
-    struct                  _ZcoordsZerosOnAxis<num_axis,-1> {
-        static constexpr TZ value = 0;
-    };
-
-    /// Ex: axis = 0, dim = 3 (i.e. x) => 000... for level and free_bits ++ 001001001...
-    template                <int num_axis,int _cur_bit = sizeof_zcoords - 1>
-    struct                  _ZcoordsOnesOnAxis {
-        static constexpr TZ v_loc = TZ( _cur_bit % dim == num_axis ? 1 : 0 ) << _cur_bit;
-        static constexpr TZ value = v_loc | _ZcoordsOnesOnAxis<num_axis,_cur_bit-1>::value;
-    };
-    template                <int num_axis>
-    struct                  _ZcoordsOnesOnAxis<num_axis,-1> {
-        static constexpr TZ value = 0;
-    };
-
-
     void                    fill_grid_using_zcoords( TI num_grid, const Pt *positions, const TF *weights, std::size_t nb_diracs );
     void                    repl_zcoords_by_ccoords( TI num_grid );
     void                    find_englobing_cousins ( TI num_grid, const Pt *positions ); ///< find englobing cells for each dirac (and for each grid). Must be done after repl_zcoords_by_ccoords

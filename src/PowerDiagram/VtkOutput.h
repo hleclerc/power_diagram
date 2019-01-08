@@ -52,7 +52,7 @@ private:
     size_t                  _nb_vtk_cells     () const;
 
     CN                      _cell_field_names;
-    std::deque<Po>          _polygons;
+    std::vector<Po>         _polygons;
     std::deque<Pt>          _points;
     std::deque<Li>          _lines;
 };

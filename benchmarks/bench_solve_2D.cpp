@@ -2,14 +2,7 @@
 #include "../src/PowerDiagram/Bounds/ConvexPolyhedronAssembly.h"
 #include "../src/PowerDiagram/OptimalTransportSolver.h"
 #include "../src/PowerDiagram/Visitors/ZGrid.h"
-//#include "../src/PowerDiagram/EigenSolver.h"
-//// #include "../src/PowerDiagram/AmgclSolver.h"
-//#include "../src/PowerDiagram/VtkOutput.h"
 
-//#include "../src/PowerDiagram/get_der_integrals_wrt_weights.h"
-//#include "../src/PowerDiagram/get_centroids.h"
-
-//#include "../src/PowerDiagram/system/Tick.h"
 #include "set_up_diracs.h"
 
 //// nsmake cpp_flag -march=native
@@ -34,6 +27,7 @@ int main( int argc, char **argv ) {
         ( "t,nb-threads"            , "...", cxxopts::value<int>()->default_value( "0" ) )
         ( "v,vtk-output"            , "", cxxopts::value<std::string>() )
         ( "n,nb-diracs"             , "...", cxxopts::value<double>()->default_value( "100" ) )
+        ( "o,output"                , "", cxxopts::value<std::string>() )
         ( "h,help"                  , "get help" )
         ;
     auto args = options.parse( argc, argv );
@@ -60,26 +54,27 @@ int main( int argc, char **argv ) {
     solver.solve( positions.data(), weights.data(), weights.size() );
     //        P( solver.volume( diracs ), err );
 
-    //    if ( args.count( "vtk-output" ) ) {
-    //        VtkOutput<1> vtk_output( { "weight" } );
-    //        solver.display( vtk_output, positions.data(), weights.data(), weights.size() );
-    //        vtk_output.save( args[ "vtk-output" ].as<std::string>() + ".vtk" );
-    //    }
+    if ( args.count( "vtk-output" ) ) {
+        VtkOutput<1> vtk_output( { "weight" } );
+        solver.display( vtk_output, positions.data(), weights.data(), weights.size() );
+        vtk_output.save( args[ "vtk-output" ].as<std::string>() + ".vtk" );
+    }
 
-    //    // display weights, on a voronoi diagram
-    //    if ( args.count( "vtk-output" ) ) {
-    //        VtkOutput<1> vtk_output( { "weight" } );
-    //        std::vector<Dirac> new_diracs = diracs;
-    //        for( std::size_t i = 0; i < diracs.size(); ++i )
-    //            new_diracs[ i ].weight = 1;
+    //
+    if ( args.count( "output" ) ) {
+        std::string o = args[ "output" ].as<std::string>();
+        std::ofstream f( o.c_str() );
+        for( std::size_t i = 0; i < weights.size(); ++i ) {
+            f << std::setprecision( 16 ) << positions[ i ].x << " ";
+            f << std::setprecision( 16 ) << positions[ i ].y << " ";
+            f << std::setprecision( 16 ) << weights  [ i ]   << "\n";
+        }
+    }
 
-    //        grid.init( new_diracs );
-    //        grid.for_each_laguerre_cell( [&]( auto &lc, std::size_t num_dirac_0 ) {
-    //            lc.display( vtk_output, { diracs[ num_dirac_0 ].weight } );
-    //        }, bounds.englobing_convex_polyhedron(), new_diracs );
-
-    //        vtk_output.save( args[ "vtk-output" ].as<std::string>() + "_orig_pts.vtk" );
-    //    }
-
-    // P( solver.volume( diracs ) );
+    // display weights, on a voronoi diagram
+    if ( args.count( "vtk-output" ) ) {
+        VtkOutput<1> vtk_output( { "weight" } );
+        solver.display_orig_pts( vtk_output, positions.data(), weights.data(), weights.size() );
+        vtk_output.save( args[ "vtk-output" ].as<std::string>() + "_orig_pts.vtk" );
+    }
 }

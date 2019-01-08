@@ -1,4 +1,10 @@
-#ifndef TRIANGULATION_H
-#define TRIANGULATION_H
+#pragma once
 
-#endif // TRIANGULATION_H
+
+
+/**
+*/
+template<class Grid,class Bounds>
+void triangulation(  ) {
+
+}
