@@ -82,18 +82,7 @@ private:
     template<class C> TZ    _zcoords_for           ( const C &pos ); ///< floating point position
     template<int axis> TZ   _ng_zcoord             ( TZ zcoords, TZ off, N<axis> ) const;
 
-    //    void                    fill_grid_using_zcoords( TI num_grid, const Pt *positions, const TF *weights, TI nb_diracs );
-    //    void                    repl_zcoords_by_ccoords( TI num_grid );
-    //    void                    find_englobing_cousins ( TI num_grid, const Pt *positions ); ///< find englobing cells for each dirac (and for each grid). Must be done after repl_zcoords_by_ccoords
-    //    void                    update_the_limits      ( const Pt *positions, const TF *weights, TI nb_diracs );
-    //    void                    update_neighbors       ( TI num_grid );
-    //    void                    fill_the_grids         ( const Pt *positions, const TF *weights, TI nb_diracs );
-    //    template<int d>   TZ    ng_zcoord              ( TZ zcoords, TZ off, N<d> ) const;
-    //    bool                    may_cut                ( const CP &lc, TI i0, const Grid &cr_grid, const Cell &cr_cell, const Pt *positions, const TF *weights );
-
-    // true if a dirac in b1 (given max_weight in b1 and its neighbors) may cut lc
-
-    // tmp
+    // tmp stuff
     using                   _RsTmp                 = std::vector<std::array<std::size_t,256>>;
     _RsTmp                  _tmp_rs;
     std::vector<ZNode>      _tmp_zn;               ///< tmp znodes

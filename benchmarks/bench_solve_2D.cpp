@@ -1,9 +1,8 @@
-#include <cxxopts.hpp>
 #include "../src/PowerDiagram/Bounds/ConvexPolyhedronAssembly.h"
 #include "../src/PowerDiagram/OptimalTransportSolver.h"
 #include "../src/PowerDiagram/Visitors/ZGrid.h"
-
 #include "set_up_diracs.h"
+#include <cxxopts.hpp>
 
 //// nsmake cpp_flag -march=native
 //// nsmake cpp_flag -ffast-math
@@ -56,11 +55,11 @@ int main( int argc, char **argv ) {
     solver.solve( positions.data(), weights.data(), weights.size() );
     //        P( solver.volume( diracs ), err );
 
-    //    if ( args.count( "vtk-output" ) ) {
-    //        VtkOutput<2> vtk_output( { "weight", "num" } );
-    //        solver.display( vtk_output, positions.data(), weights.data(), weights.size() );
-    //        vtk_output.save( args[ "vtk-output" ].as<std::string>() + ".vtk" );
-    //    }
+    if ( args.count( "vtk-output" ) ) {
+        VtkOutput<2> vtk_output( { "weight", "num" } );
+        solver.display( vtk_output, positions.data(), weights.data(), weights.size() );
+        vtk_output.save( args[ "vtk-output" ].as<std::string>() + ".vtk" );
+    }
 
     //
     if ( args.count( "output" ) ) {
@@ -79,10 +78,6 @@ int main( int argc, char **argv ) {
         //solver.display_orig_pts( vtk_output, positions.data(), weights.data(), weights.size() );
 
         grid.display( vtk_output, 0.03 );
-        // double cpt = 0;
-        // P( grid.proute_cells );
-        //        for( auto cell : grid.proute_cells )
-        //            vtk_output.add_point( { cell.x, cell.y, 0.03 * cell.z }, { cell.z } );
         vtk_output.add_lines( grid.proute_cells );
 
         vtk_output.save( args[ "vtk-output" ].as<std::string>() + "_orig_pts.vtk" );

@@ -92,10 +92,6 @@ bool ZGrid<Pc>::may_cut( const CP &lc, TI i0, const Grid &cr_grid, const Cell &c
     for( std::size_t num_lc_point = 0; num_lc_point < lc.nb_points; ++num_lc_point ) {
         Pt p = lc.point( num_lc_point );
         TF r2 = norm_2_p2( p - c0 ) + cr_grid.max_weight - w0;
-
-        if ( i0 == 5546 && &cr_grid == &grids[ 1 ] && num_lc_point == 0 )
-            P( cr_cell.pos, cr_cell.size, r2 );
-
         if ( r2 <= 0 )
             continue;
 
@@ -215,9 +211,6 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
                             for( TI num_pa_dirac : Span<TI>{ pa_grid.dpc_values.data() + pa_grid.cells[ num_pa_cell + 0 ].dpc_offset, pa_grid.dpc_values.data() + pa_grid.cells[ num_pa_cell + 1 ].dpc_offset } )
                                 plane_cut( lc, num_dirac, num_pa_dirac, num_pa_grid );
 
-                            if ( num_dirac == 5546 && num_pa_grid == 1 )
-                                P( num_pa_cell, pa_grid.ng_offsets[ num_pa_cell + 1 ] - pa_grid.ng_offsets[ num_pa_cell + 0 ] );
-
                             // add neighbors in the front
                             for( TI num_ng_cell : Span<TI>{ pa_grid.ng_indices.data() + pa_grid.ng_offsets[ num_pa_cell + 0 ], pa_grid.ng_indices.data() + pa_grid.ng_offsets[ num_pa_cell + 1 ] } )
                                 front.push_without_check( num_pa_grid, num_ng_cell, grids );
@@ -326,18 +319,14 @@ bool ZGrid<Pc>::check_sanity( const Pt *positions ) const {
                 if ( num_cell_0 != num_cell_1 && touching( grid.cells[ num_cell_0 ], grid.cells[ num_cell_1 ] ) )
                     neighbors[ num_cell_0 ].push_back( num_cell_1 );
 
-        //        for( std::size_t num_cell = 0; num_cell < grid.cells.size() - 1; ++num_cell ) {
-        //            if ( num_cell == 4 ) {
-        //                P( num_cell );
-        //                P( neighbors[ num_cell ] );
-        //                P( grid.ng_offsets[ num_cell + 1 ] - grid.ng_offsets[ num_cell + 0 ] );
-        //                for( TI v : Span<TI>( grid.ng_indices.data() + grid.ng_offsets[ num_cell + 0 ], grid.ng_indices.data() + grid.ng_offsets[ num_cell + 1 ] ) )
-        //                    P( v );
-        //            }
-        //        }
-
         for( std::size_t num_cell = 0; num_cell < grid.cells.size() - 1; ++num_cell )
-            ASSERT( grid.ng_offsets[ num_cell + 1 ] - grid.ng_offsets[ num_cell + 0 ] == neighbors[ num_cell ].size(), "" );
+            if ( grid.ng_offsets[ num_cell + 1 ] - grid.ng_offsets[ num_cell + 0 ] != neighbors[ num_cell ].size() ) {
+                //                P( num_cell );
+                //                P( neighbors[ num_cell ] );
+                //                for( TI v : Span<TI>( grid.ng_indices.data() + grid.ng_offsets[ num_cell + 0 ], grid.ng_indices.data() + grid.ng_offsets[ num_cell + 1 ] ) )
+                //                    P( v );
+                ASSERT( neighbors[ num_cell ].size() == grid.ng_offsets[ num_cell + 1 ] - grid.ng_offsets[ num_cell + 0 ], "" );
+            }
     }
 
     return true;
@@ -415,25 +404,19 @@ void ZGrid<Pc>::update_neighbors( TI num_grid ) {
             TZ off = zcells[ index_node + 1 ].zcoords - zcells[ index_node ].zcoords;
             TZ lim = zcells[ index_nbor ].zcoords + off;
             if ( zcells[ index_nbor + 1 ].zcoords < lim ) {
-                std::array<TZ,dim> tgts;
-                StaticRange<dim>::for_each( [&]( auto d ) {
-                    using Zooa = typename ZCoords<TZ,dim,nb_bits_per_axis,sizeof_zcoords>::template _ZcoordsOnesOnAxis<d.val>;
-                    tgts[ d ] = zcells[ index_node ].zcoords & Zooa::value;
-                    tgts[ d ] = ( tgts[ d ] | Zooa::value ) + off;
-                    tgts[ d ] = tgts[ d ] & Zooa::value;
+                // find direction to ng
+                StaticRange<dim>::for_each_cont( [&]( auto dir ) {
+                    using Zooa = typename ZCoords<TZ,dim,nb_bits_per_axis>::template _ZcoordsOnesOnAxis<dir.val>;
+                    if ( ( zcells[ index_node ].zcoords & Zooa::value ) != ( zcells[ index_nbor ].zcoords & Zooa::value ) ) {
+                        TZ dv = zcells[ index_nbor++ ].zcoords & Zooa::value;
+                        do {
+                            if ( ( zcells[ index_nbor ].zcoords & Zooa::value ) == dv )
+                                cb( index_node, index_nbor );
+                        } while ( zcells[ ++index_nbor ].zcoords < lim );
+                        return false;
+                    }
+                    return true;
                 } );
-
-                ++index_nbor;
-                do {
-                    bool touching = false;
-                    StaticRange<dim>::for_each( [&]( auto d ) {
-                        using Zooa = typename ZCoords<TZ,dim,nb_bits_per_axis,sizeof_zcoords>::template _ZcoordsOnesOnAxis<d.val>;
-                        TZ val = zcells[ index_nbor ].zcoords & Zooa::value;
-                        touching |= val == tgts[ d ];
-                    } );
-                    if ( touching )
-                        cb( index_node, index_nbor );
-                } while ( zcells[ ++index_nbor ].zcoords < lim );
             }
         }
     };
@@ -676,7 +659,7 @@ void ZGrid<Pc>::display( V &vtk_output, TF z ) const {
 
 template<class Pc> template<int axis>
 typename ZGrid<Pc>::TZ ZGrid<Pc>::ng_zcoord( TZ zcoords, TZ off, N<axis> ) const {
-    using Zzoa = typename ZCoords<TZ,dim,nb_bits_per_axis,sizeof_zcoords>::template _ZcoordsZerosOnAxis<axis>;
+    using Zzoa = typename ZCoords<TZ,dim,nb_bits_per_axis>::template _ZcoordsZerosOnAxis<axis>;
     TZ ff0 = Zzoa::value;
     TZ res = ( ( zcoords | ff0 ) + off ) & ~ ff0;
     return res | ( zcoords & ff0 );

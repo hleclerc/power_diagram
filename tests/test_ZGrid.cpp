@@ -5,7 +5,7 @@
 using std::abs;
 
 TEST_CASE( "ZGrid measures" ) {
-    struct Pc     { enum { nb_bits_per_axis = 31, allow_ball_cut = 0, dim = 2 }; using TI = std::size_t; using TF = double; };
+    struct Pc     { enum { nb_bits_per_axis = 29, allow_ball_cut = 0, dim = 2 }; using TI = std::size_t; using TF = double; };
     using  Bounds = PowerDiagram::Bounds::ConvexPolyhedronAssembly<Pc>;
     using  Grid   = PowerDiagram::Visitor::ZGrid<Pc>;
 

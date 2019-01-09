@@ -2,9 +2,9 @@
 
 /*
 */
-template<class TZ,int dim,int nb_bits_per_axis,int sizeof_zcoords> 
+template<class TZ,int dim,int nb_bits_per_axis>
 struct ZCoords {
-    template                <int num_axis,int _cur_bit=dim*nb_bits_per_axis-1>
+    template                <int num_axis,int _cur_bit = dim * nb_bits_per_axis - 1>
     struct                  _ZcoordsZerosOnAxis {
         static constexpr TZ v_loc = TZ( _cur_bit % dim == num_axis ? 0 : 1 ) << _cur_bit;
         static constexpr TZ value = v_loc | _ZcoordsZerosOnAxis<num_axis,_cur_bit-1>::value;
@@ -16,7 +16,7 @@ struct ZCoords {
     };
 
     /// Ex: axis = 0, dim = 3 (i.e. x) => 000... for level and free_bits ++ 001001001...
-    template                <int num_axis,int _cur_bit = sizeof_zcoords - 1>
+    template                <int num_axis,int _cur_bit = dim * nb_bits_per_axis - 1>
     struct                  _ZcoordsOnesOnAxis {
         static constexpr TZ v_loc = TZ( _cur_bit % dim == num_axis ? 1 : 0 ) << _cur_bit;
         static constexpr TZ value = v_loc | _ZcoordsOnesOnAxis<num_axis,_cur_bit-1>::value;

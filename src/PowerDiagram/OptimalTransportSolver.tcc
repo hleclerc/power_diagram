@@ -1,7 +1,7 @@
 #include "get_der_integrals_wrt_weights.h"
 #include "OptimalTransportSolver.h"
+#include "traversal_cgal.h"
 #include "get_integrals.h"
-// #include "traversal_cgal.h"
 // #include "AmgclSolver.h"
 #include "EigenSolver.h"
 #include "system/Tick.h"
@@ -31,7 +31,7 @@ void OptimalTransportSolver<Grid, Bounds>::solve( const Pt *positions, TF *weigh
         grid.update( positions, weights, nb_diracs, num_iter == 0, true );
         timings_grid.push_back( Tick::elapsed_since( t0 ) );
 
-        P( grid.check_sanity( positions ) );
+        // P( grid.check_sanity( positions ) );
 
         //        VtkOutput<1> vo_grid( { "num" } );
         //        grid.display( vo_grid );
@@ -83,7 +83,7 @@ void OptimalTransportSolver<Grid, Bounds>::solve( const Pt *positions, TF *weigh
         //        vtk_output.save( "vtk/pd.vtk" );
 
         t0 = Tick::get_time();
-        // traversal_cgal( reinterpret_cast<const TF *>( positions ), weights, nb_diracs );
+        traversal_cgal( reinterpret_cast<const TF *>( positions ), weights, nb_diracs );
         timings_cgal.push_back( Tick::elapsed_since( t0 ) );
 
         TF mdw = 0;
