@@ -1,5 +1,6 @@
 #include "get_der_integrals_wrt_weights.h"
 #include "OptimalTransportSolver.h"
+#include "get_integrals.h"
 // #include "traversal_cgal.h"
 // #include "AmgclSolver.h"
 #include "EigenSolver.h"
@@ -30,17 +31,31 @@ void OptimalTransportSolver<Grid, Bounds>::solve( const Pt *positions, TF *weigh
         grid.update( positions, weights, nb_diracs, num_iter == 0, true );
         timings_grid.push_back( Tick::elapsed_since( t0 ) );
 
-        //        P( grid.check_sanity( positions ) );
+        P( grid.check_sanity( positions ) );
 
         //        VtkOutput<1> vo_grid( { "num" } );
         //        grid.display( vo_grid );
         //        vo_grid.save( "vtk/grid.vtk" );
+        //        VtkOutput<2> vtk_output( { "weight", "num" } );
+        //        display( vtk_output, positions, weights, nb_diracs );
+        //        vtk_output.save( "vtk/pd.vtk" );
+
+        //        v_values.resize( nb_diracs );
+        //        t0 = Tick::get_time();
+        //        get_integrals( v_values.data(), grid, bounds, positions, weights, nb_diracs );
+        //        auto t0_der = Tick::elapsed_since( t0 );
+        // P( v_values );
 
         // der
         t0 = Tick::get_time();
         int error = get_der_integrals_wrt_weights( m_offsets, m_columns, m_values, v_values, grid, bounds, positions, weights, nb_diracs );
         auto t0_der = Tick::elapsed_since( t0 );
         m_values[ 0 ] *= 2;
+
+        TF vol = 0;
+        for( std::size_t i = 0; i < nb_diracs; ++i )
+            vol += v_values[ i ];
+        P( vol );
 
         // go back if pb
         if ( error ) {
@@ -92,7 +107,7 @@ template<class Grid, class Bounds> template<class VO>
 void OptimalTransportSolver<Grid,Bounds>::display( VO &vtk_output, const Pt *positions, const TF *weights, TI nb_diracs ) {
     grid.update( positions, weights, nb_diracs );
     grid.for_each_laguerre_cell( [&]( auto &lc, std::size_t num_dirac_0 ) {
-        lc.display( vtk_output, { weights[ num_dirac_0 ] } );
+        lc.display( vtk_output, { weights[ num_dirac_0 ], TF( num_dirac_0 ) } );
     }, bounds.englobing_convex_polyhedron(), positions, weights, nb_diracs );
 }
 
@@ -109,7 +124,6 @@ void OptimalTransportSolver<Grid,Bounds>::display_orig_pts( VO &vtk_output, cons
         min_w = min( min_w, weights[ i ] );
         max_w = max( max_w, weights[ i ] );
     }
-    P( max_w - min_w );
 
     grid.update( positions, new_weights.data(), nb_diracs );
     grid.for_each_laguerre_cell( [&]( auto &lc, TI num_dirac_0 ) {

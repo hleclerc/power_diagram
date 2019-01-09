@@ -1,3 +1,4 @@
+#include "../system/Assert.h"
 #include "FrontZgrid.h"
 #include <cmath>
 
@@ -22,15 +23,16 @@ void FrontZgrid<ZG>::set_visited( const std::vector<Grid> &grids, TI num_grid, T
 template<class ZG> template<class Cell>
 typename FrontZgrid<ZG>::TF FrontZgrid<ZG>::dist( const Cell &cell, TF max_weight ) {
     using std::sqrt;
+    using std::max;
 
     //    Pt V = cell.pos - orig_position;
     //    TF n = norm_2_p2( V );
-    //    TF x = TF( 1 ) + ( orig_weight - max_weight ) / n;
+    //    TF x = TF( 1 ) + max( orig_weight - max_weight, TF( 0 ) ) / n;
     //    return x * sqrt( n );
 
     TF res = 0;
     for( int d = 0; d < dim; ++d ) {
-        TF v = cell.pos[ d ] - orig_position[ d ]; // we need abs to avoid the overflow
+        TF v = cell.pos[ d ] - orig_position[ d ];
         res += v * v;
     }
     return res;
@@ -38,6 +40,7 @@ typename FrontZgrid<ZG>::TF FrontZgrid<ZG>::dist( const Cell &cell, TF max_weigh
 
 template<class ZG> template<class Grid>
 void FrontZgrid<ZG>::push_without_check( TI num_grid, TI num_cell, const std::vector<Grid> &grids ) {
+    // ASSERT( visited[ num_grid ][ num_cell ] != op_count, "" );
     items.push( Item{ num_grid, num_cell, dist( grids[ num_grid ].cells[ num_cell ], grids[ num_grid ].max_weight ) } );
     set_visited( grids, num_grid, num_cell );
 }

@@ -277,7 +277,9 @@ template<class Pc>
 void ZGridPol<Pc>::_subdivide_add_poly_rec( Pt *positions, TF *weights, TI nb_diracs, Pt p0, Pt p1, int num ) {
     using EM = Eigen::Matrix<TF,Eigen::Dynamic,Eigen::Dynamic>;
     using EV = Eigen::Matrix<TF,Eigen::Dynamic,1>;
+    using std::swap;
     using std::pow;
+    using std::min;
     using std::max;
     using std::abs;
 
@@ -314,23 +316,86 @@ void ZGridPol<Pc>::_subdivide_add_poly_rec( Pt *positions, TF *weights, TI nb_di
     C.compute( M );
     EV D = C.solve( V );
 
-    // check error
-    TF err = 0;
-    for( TI n = 0; n < nb_diracs; ++n ) {
-        TF val = 0;
-        val += D[ 0 ];
-        val += D[ 1 ] * positions[ n ].x;
-        val += D[ 2 ] * positions[ n ].y;
-        val += D[ 3 ] * positions[ n ].x * positions[ n ].x;
-        val += D[ 4 ] * positions[ n ].x * positions[ n ].y;
-        val += D[ 5 ] * positions[ n ].y * positions[ n ].y;
+    // start a new poly
+    Poly poly;
+    for( TI i = 0; i < D.size(); ++i )
+        poly.coeffs[ i ] = D[ i ];
 
-        err = max( err, abs( weights[ n ] - val  ) );
+    // check error
+    TF mi = + std::numeric_limits<TF>::max();
+    TF ma = - std::numeric_limits<TF>::max();
+    for( TI n = 0; n < nb_diracs; ++n ) {
+        TF d = weights[ n ] - poly.value( positions[ n ] );
+        mi = min( mi, d );
+        ma = max( ma, d );
+    }
+    poly.coeffs[ 0 ] += mi;
+    poly.delta = ma - mi;
+    P( poly.delta );
+    P( pow( poly.delta, 0.5 ) );
+
+    // need to subdivide ?
+    if ( num < 2 ) {
+        // nb diracs in each quadrant
+        constexpr TI nc = pow( 2, dim );
+        std::array<TI,nc> count;
+        for( TI i = 0; i < nc; ++i )
+            count[ i ] = 0;
+
+        TF l = TF( 2 ) / ( p1.x - p0.x );
+        for( TI n = 0; n < nb_diracs; ++n ) {
+            TI off = 0;
+            for( int d = 0; d < dim; ++d ) {
+                bool v = l * ( positions[ n ][ d ] - p0[ d ] ) > 1;
+                off += pow( 2, d ) * v;
+            }
+            ++count[ off ];
+        }
+
+        // beg of diracs for each quadrant
+        std::array<TI,nc+1> begs;
+        begs[ 0 ] = 0;
+        for( TI i = 0, o = 0; i < nc; ++i ) {
+            o += count[ i ];
+            begs[ i + 1 ] = o;
+        }
+
+        // swap values
+        std::array<TI,nc+1> pos = begs;
+        for( TI cur = 0; cur < nc; ++cur ) {
+            while( pos[ cur ] < begs[ cur + 1 ] ) {
+                TI off = 0;
+                for( int d = 0; d < dim; ++d ) {
+                    bool v = l * ( positions[ pos[ cur ] ][ d ] - p0[ d ] ) > 1;
+                    off += pow( 2, d ) * v;
+                }
+                if ( off != cur ) {
+                    swap( positions[ pos[ cur ] ], positions[ pos[ off ] ] );
+                    swap( weights  [ pos[ cur ] ], weights  [ pos[ off ] ] );
+                }
+                ++pos[ off ];
+            }
+        }
+
+        // rec call
+        TF s = 0.5 * ( p1.x - p0.x );
+        for( TI i = 0; i < nc; ++i ) {
+            TI beg = begs[ i + 0 ];
+            TI end = begs[ i + 1 ];
+
+            Pt pn = p0;
+            for( int d = 0; d < dim; ++d )
+                if ( i & ( 1 << d ) )
+                    pn[ d ] += s;
+            _subdivide_add_poly_rec( positions + beg, weights + beg, end - beg, pn, pn + s, num + 1 );
+        }
+        return;
     }
 
-    P( err );
-    // if ( num == 0 )
-    // _subdivide_add_poly_rec( Pt *positions, TF *weights, TI nb_diracs, Pt p0, Pt p1, int num );
+    // else, register the polynomial
+    poly.p0 = p0;
+    poly.p1 = p1;
+    _polynomials.push_back( poly );
 }
 
 //template<class Pc>
@@ -611,6 +676,7 @@ typename ZGridPol<Pc>::TZ ZGridPol<Pc>::_zcoords_for( const C &pos ) {
 
 template<class Pc> template<class V>
 void ZGridPol<Pc>::display( V &vtk_output ) const {
+    // grid
     for( TI num_cell = 0; num_cell < _cells.size() - 1; ++num_cell ) {
         Pt p;
         for( int d = 0; d < dim; ++d )
@@ -625,12 +691,31 @@ void ZGridPol<Pc>::display( V &vtk_output ) const {
                 Point2<TF>{ p[ 0 ] + b, p[ 1 ] + b },
                 Point2<TF>{ p[ 0 ] + a, p[ 1 ] + b },
                 Point2<TF>{ p[ 0 ] + a, p[ 1 ] + a },
-            } );
+            }, { TF( 0 ) } );
             break;
         case 3:
             TODO;
             break;
         default:
+            TODO;
+        }
+    }
+
+    // weight approx
+    for( const Poly &poly : _polynomials ) {
+        if ( dim == 2 ) {
+            std::vector<Point3<TF>> line;
+            for( TI ny = 128 * ( poly.p1.y - poly.p0.y ), iy = ny + 1; iy--; ) {
+                Pt p;
+                line.clear();
+                p.y = poly.p0.y + ( poly.p1.y - poly.p0.y ) * iy / ny;
+                for( TI nx = 128 * ( poly.p1.x - poly.p0.x ), ix = nx + 1; ix--; ) {
+                    p.x = poly.p0.x + ( poly.p1.x - poly.p0.x ) * ix / nx;
+                    line.push_back( { p.x, p.y, poly.value( p ) } );
+                }
+                vtk_output.add_lines( line, { TF( 1 ) } );
+            }
+        } else {
             TODO;
         }
     }
@@ -642,6 +727,22 @@ typename ZGridPol<Pc>::TZ ZGridPol<Pc>::_ng_zcoord( TZ zcoords, TZ off, N<axis> 
     TZ ff0 = Zzoa::value;
     TZ res = ( ( zcoords | ff0 ) + off ) & ~ ff0;
     return res | ( zcoords & ff0 );
+}
+
+template<class Pc>
+typename ZGridPol<Pc>::TF ZGridPol<Pc>::Poly::value( Pt p ) const {
+    TF res = 0;
+    if ( dim == 2 ) {
+        res += coeffs[ 0 ];
+        res += coeffs[ 1 ] * p.x;
+        res += coeffs[ 2 ] * p.y;
+        res += coeffs[ 3 ] * p.x * p.x;
+        res += coeffs[ 4 ] * p.x * p.y;
+        res += coeffs[ 5 ] * p.y * p.y;
+    } else {
+        TODO;
+    }
+    return res;
 }
 
 //template<class Pc>

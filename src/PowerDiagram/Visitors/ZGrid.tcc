@@ -5,6 +5,7 @@
 #include "FrontZgrid.h"
 #include "ZGrid.h"
 #include <cmath>
+#include <set>
 
 // #define DISPLAY_nb_explored_cells
 
@@ -34,9 +35,7 @@ bool ZGrid<Pc>::may_cut( const CP &lc, TI i0, const Grid &cr_grid, const Cell &c
     using std::abs;
 
     auto c0 = positions[ i0 ];
-    auto w0 = weights  [ i0 ];
-
-    return true;
+    auto w0 = weights[ i0 ];
 
     //
     if ( ball_cut ) {
@@ -51,61 +50,89 @@ bool ZGrid<Pc>::may_cut( const CP &lc, TI i0, const Grid &cr_grid, const Cell &c
         return md < pow( sqrt( cr_grid.max_weight ) + sqrt( w0 ), 2 );
     }
 
+    // return true;
+
     //
-    if ( w0 > cr_grid.min_weight ) {
-        TF d2 = w0 - cr_grid.min_weight;
-        if ( d2 > 0 ) {
-            //
-            TF max_cur_dist = 0;
-            for( std::size_t num_lc_point = 0; num_lc_point < lc.nb_points; ++num_lc_point )
-                max_cur_dist = max( max_cur_dist, norm_2_p2( lc.point( num_lc_point ) ) );
-            if ( max_cur_dist > 4 * d2 ) {
-                TF dx = cr_cell.pos[ 0 ] - c0[ 0 ];
-                TF dy = cr_cell.pos[ 1 ] - c0[ 1 ];
-                TF x2 = min( pow( dx, 2 ), pow( dx + cr_cell.size, 2 ) );
-                TF y2 = min( pow( dy, 2 ), pow( dy + cr_cell.size, 2 ) );
-                if ( x2 + y2 < d2 )
+    const Pt A{ cr_cell.pos.x               , cr_cell.pos.y                };
+    const Pt B{ cr_cell.pos.x + cr_cell.size, cr_cell.pos.y                };
+    const Pt C{ cr_cell.pos.x               , cr_cell.pos.y + cr_cell.size };
+    const Pt D{ cr_cell.pos.x + cr_cell.size, cr_cell.pos.y + cr_cell.size };
+
+    // p = center. l = first point of the segment, d = segment direction. s = size of the segment
+    auto inter_disc_segment = [&]( Pt p, TF r2, Pt l, int d, TF min_s, TF max_s ) {
+        Pt q = p - l;
+        TF c = norm_2_p2( q ) - r2;
+        TF e = q[ d ] * q[ d ] - c;
+        if ( e <= 0 )
+            return false;
+        e = sqrt( e );
+
+        TF s0 = q[ d ] + e;
+        TF s1 = q[ d ] - e;
+        return ( s0 >= min_s && s0 <= max_s ) || ( s1 >= min_s && s1 <= max_s );
+    };
+
+    // l = first point of the segment. d = direction of the segment. s = size of the segment
+    auto test_one_line = [&]( Pt p, TF r2, Pt l0, Pt l1, int d, TF s, TF d_eps ) {
+        return norm_2_p2( l0 - p ) < r2 + d_eps * d_eps ||
+               norm_2_p2( l1 - p ) < r2 + d_eps * d_eps ||
+               inter_disc_segment( p, r2, l0, d, 0 - d_eps, s + d_eps );
+    };
+
+    // l = common point of the segments. sx = signed sizes of the segments for for the x direction
+    auto test_two_lines = [&]( Pt p, TF r2, Pt lm, Pt lx, Pt ly, TF min_x, TF max_x, TF min_y, TF max_y, TF d_eps ) {
+        return norm_2_p2( lx - p ) < r2 + d_eps * d_eps ||
+               norm_2_p2( ly - p ) < r2 + d_eps * d_eps ||
+               inter_disc_segment( p, r2, lm, 0, min_x, max_x ) ||
+               inter_disc_segment( p, r2, lm, 1, min_y, max_y ) ;
+    };
+
+    //
+    const TF d_eps = 10 * std::numeric_limits<TF>::epsilon() * cr_cell.size;
+    for( std::size_t num_lc_point = 0; num_lc_point < lc.nb_points; ++num_lc_point ) {
+        Pt p = lc.point( num_lc_point );
+        TF r2 = norm_2_p2( p - c0 ) + cr_grid.max_weight - w0;
+
+        if ( i0 == 5546 && &cr_grid == &grids[ 1 ] && num_lc_point == 0 )
+            P( cr_cell.pos, cr_cell.size, r2 );
+
+        if ( r2 <= 0 )
+            continue;
+
+        if ( p.x < A.x - d_eps ) {
+            if ( p.y < A.y ) {
+                if ( test_two_lines( p, r2, A, B, C, - d_eps, cr_cell.size + d_eps, - d_eps, cr_cell.size + d_eps, d_eps ) )
+                    return true;
+            } else if ( p.y < C.y ) {
+                if ( test_one_line( p, r2, A, C, 1, cr_cell.size, d_eps ) )
+                    return true;
+            } else {
+                if ( test_two_lines( p, r2, C, D, A, - d_eps, cr_cell.size + d_eps, - cr_cell.size - d_eps, d_eps, d_eps ) )
+                    return true;
+            }
+        } else if ( p.x < B.x + d_eps ) {
+            if ( p.y < A.y - d_eps ) {
+                if ( test_one_line( p, r2, A, B, 0, cr_cell.size, d_eps ) )
+                    return true;
+            } else if ( p.y < C.y + d_eps ) {
+                return true;
+            } else {
+                if ( test_one_line( p, r2, C, D, 0, cr_cell.size, d_eps ) )
+                    return true;
+            }
+        } else {
+            if ( p.y < A.y ) {
+                if ( test_two_lines( p, r2, B, A, D, - cr_cell.size - d_eps, d_eps, - d_eps, cr_cell.size + d_eps, d_eps ) )
+                    return true;
+            } else if ( p.y < C.y ) {
+                if ( test_one_line( p, r2, B, D, 1, cr_cell.size, d_eps ) )
+                    return true;
+            } else {
+                if ( test_two_lines( p, r2, D, C, B, - cr_cell.size - d_eps, d_eps, - cr_cell.size - d_eps, d_eps, d_eps ) )
                     return true;
             }
         }
     }
-
-    //
-    TF l0 = cr_cell.size;
-    auto test_line = [&]( Pt A, Pt B, Pt p ) {
-        TF s2 = l0 * l0;
-        TF s1 = dot( p - A, B - A );
-        TF s0 = ( norm_2_p2( p - A ) - cr_grid.max_weight ) - ( norm_2_p2( c0 - p ) - w0 );
-        if ( s1 > 0 && s1 < s2 && s2 * s0 - s1 * s1 < 0 )
-            return true;
-        return s0 < 0 || s2 - 2 * s1 + s0 < 0;
-    };
-
-    TF dx = cr_cell.pos[ 0 ] < c0[ 0 ] ? l0 : 0;
-    TF dy = cr_cell.pos[ 1 ] < c0[ 1 ] ? l0 : 0;
-
-    Pt PA { cr_cell.pos[ 0 ]     , cr_cell.pos[ 1 ] + dy };
-    Pt PB { cr_cell.pos[ 0 ] + l0, cr_cell.pos[ 1 ] + dy };
-
-    Pt PC { cr_cell.pos[ 0 ] + dx, cr_cell.pos[ 1 ]      };
-    Pt PD { cr_cell.pos[ 0 ] + dx, cr_cell.pos[ 1 ] + l0 };
-
-    for( std::size_t num_lc_point = 0; num_lc_point < lc.nb_points; ++num_lc_point ) {
-        if ( test_line( PA, PB, lc.point( num_lc_point ) ) ) return true;
-        if ( test_line( PC, PD, lc.point( num_lc_point ) ) ) return true;
-    }
-
-    //    Pt PA { cr_cell.pos[ 0 ]     , cr_cell.pos[ 1 ]      };
-    //    Pt PB { cr_cell.pos[ 0 ] + l0, cr_cell.pos[ 1 ]      };
-    //    Pt PC { cr_cell.pos[ 0 ] + l0, cr_cell.pos[ 1 ] + l0 };
-    //    Pt PD { cr_cell.pos[ 0 ]     , cr_cell.pos[ 1 ] + l0 };
-
-    //    for( std::size_t num_lc_point = 0; num_lc_point < lc.nb_points; ++num_lc_point ) {
-    //        if ( test_line( PA, PB, lc.point( num_lc_point ) ) ) return true;
-    //        if ( test_line( PB, PC, lc.point( num_lc_point ) ) ) return true;
-    //        if ( test_line( PC, PD, lc.point( num_lc_point ) ) ) return true;
-    //        if ( test_line( PD, PA, lc.point( num_lc_point ) ) ) return true;
-    //    }
 
     return false;
 }
@@ -122,7 +149,12 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
     using Front = FrontZgrid<ZGrid>;
     using std::sqrt;
 
-    auto plane_cut = [&]( CP &lc, TI i0, TI i1 ) {
+    auto plane_cut = [&]( CP &lc, TI i0, TI i1, TI num_grid ) {
+        if ( i0 == 5546 ) {
+            proute_cells.push_back( { positions[ i0 ].x, positions[ i0 ].y, TF( 0.03 * 2 ) } );
+            proute_cells.push_back( { positions[ i1 ].x, positions[ i1 ].y, TF( 0.03 * num_grid ) } );
+        }
+
         Pt V = positions[ i1 ] - positions[ i0 ];
         TF n = norm_2_p2( V );
         TF x = TF( 1 ) + ( weights[ i0 ] - weights[ i1 ] ) / n;
@@ -163,7 +195,7 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
                     lc = starting_lc;
                     for( TI num_cr_dirac : Span<TI>{ grid.dpc_values.data() + cell.dpc_offset, grid.dpc_values.data() + grid.cells[ num_cell + 1 ].dpc_offset } )
                         if ( num_cr_dirac != num_dirac )
-                            plane_cut( lc, num_dirac, num_cr_dirac );
+                            plane_cut( lc, num_dirac, num_cr_dirac, num_grid );
 
                     // front
                     front.init( grids, num_grid, num_cell, positions[ num_dirac ], weights[ num_dirac ] );
@@ -175,13 +207,16 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
                     // => items from the grids made for != weight (containing the dirac position)
                     for( std::size_t num_pa_grid = 0; num_pa_grid < grids.size(); ++num_pa_grid ) {
                         if ( num_pa_grid != num_grid ) {
-                            Grid &pa_grid = grids[ num_pa_grid ];
+                            const Grid &pa_grid = grids[ num_pa_grid ];
                             TI num_pa_cell = pa_grid.cell_index_vs_dirac_number[ num_dirac ];
 
                             // cut with items in pa cell
                             front.set_visited( grids, num_pa_grid, num_pa_cell );
-                            for( TI num_cr_dirac : Span<TI>{ pa_grid.dpc_values.data() + pa_grid.cells[ num_pa_cell + 0 ].dpc_offset, pa_grid.dpc_values.data() + pa_grid.cells[ num_pa_cell + 1 ].dpc_offset } )
-                                plane_cut( lc, num_dirac, num_cr_dirac );
+                            for( TI num_pa_dirac : Span<TI>{ pa_grid.dpc_values.data() + pa_grid.cells[ num_pa_cell + 0 ].dpc_offset, pa_grid.dpc_values.data() + pa_grid.cells[ num_pa_cell + 1 ].dpc_offset } )
+                                plane_cut( lc, num_dirac, num_pa_dirac, num_pa_grid );
+
+                            if ( num_dirac == 5546 && num_pa_grid == 1 )
+                                P( num_pa_cell, pa_grid.ng_offsets[ num_pa_cell + 1 ] - pa_grid.ng_offsets[ num_pa_cell + 0 ] );
 
                             // add neighbors in the front
                             for( TI num_ng_cell : Span<TI>{ pa_grid.ng_indices.data() + pa_grid.ng_offsets[ num_pa_cell + 0 ], pa_grid.ng_indices.data() + pa_grid.ng_offsets[ num_pa_cell + 1 ] } )
@@ -205,11 +240,11 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
 
                         // if we have diracs in cr, do the cuts
                         for( TI num_cr_dirac : Span<TI>{ cr_grid.dpc_values.data() + cr_cell.dpc_offset, cr_grid.dpc_values.data() + cr_grid.cells[ cr.num_cell + 1 ].dpc_offset } )
-                            plane_cut( lc, num_dirac, num_cr_dirac );
+                            plane_cut( lc, num_dirac, num_cr_dirac, cr.num_grid );
 
                         // update the front
-                        for( TI num_ng_node : Span<TI>{ cr_grid.ng_indices.data() + cr_grid.ng_offsets[ cr.num_cell + 0 ], cr_grid.ng_indices.data() + cr_grid.ng_offsets[ cr.num_cell + 1 ] } )
-                            front.push( cr.num_grid, num_ng_node, grids );
+                        for( TI num_ng_cell : Span<TI>{ cr_grid.ng_indices.data() + cr_grid.ng_offsets[ cr.num_cell + 0 ], cr_grid.ng_indices.data() + cr_grid.ng_offsets[ cr.num_cell + 1 ] } )
+                            front.push( cr.num_grid, num_ng_cell, grids );
                     }
 
                     //
@@ -269,6 +304,42 @@ bool ZGrid<Pc>::check_sanity( const Pt *positions ) const {
         }
     }
 
+    // check neighbors
+    for( const Grid &grid : grids ) {
+        std::vector<std::vector<TI>> neighbors( grid.cells.size() - 1 );
+        auto ae = []( TF a, TF b ) {
+             using std::abs;
+             return abs( a - b ) < 1e-6;
+        };
+
+        auto touching = [&]( const Cell &c0, const Cell &c1 ) {
+            using std::min;
+            using std::max;
+            return ( ae( c0.pos.x + c0.size, c1.pos.x ) && min( c0.pos.y + c0.size, c1.pos.y + c1.size ) - max( c0.pos.y, c1.pos.y ) > 1e-6 ) || // left
+                   ( ae( c0.pos.x, c1.pos.x + c1.size ) && min( c0.pos.y + c0.size, c1.pos.y + c1.size ) - max( c0.pos.y, c1.pos.y ) > 1e-6 ) || // right
+                   ( min( c0.pos.x + c0.size, c1.pos.x + c1.size ) - max( c0.pos.x, c1.pos.x ) > 1e-6 && ae( c0.pos.y + c0.size, c1.pos.y ) ) || // up
+                   ( min( c0.pos.x + c0.size, c1.pos.x + c1.size ) - max( c0.pos.x, c1.pos.x ) > 1e-6 && ae( c0.pos.y, c1.pos.y + c1.size ) ) ;  // bottom
+        };
+
+        for( std::size_t num_cell_0 = 0; num_cell_0 < grid.cells.size() - 1; ++num_cell_0 )
+            for( std::size_t num_cell_1 = 0; num_cell_1 < grid.cells.size() - 1; ++num_cell_1 )
+                if ( num_cell_0 != num_cell_1 && touching( grid.cells[ num_cell_0 ], grid.cells[ num_cell_1 ] ) )
+                    neighbors[ num_cell_0 ].push_back( num_cell_1 );
+
+        //        for( std::size_t num_cell = 0; num_cell < grid.cells.size() - 1; ++num_cell ) {
+        //            if ( num_cell == 4 ) {
+        //                P( num_cell );
+        //                P( neighbors[ num_cell ] );
+        //                P( grid.ng_offsets[ num_cell + 1 ] - grid.ng_offsets[ num_cell + 0 ] );
+        //                for( TI v : Span<TI>( grid.ng_indices.data() + grid.ng_offsets[ num_cell + 0 ], grid.ng_indices.data() + grid.ng_offsets[ num_cell + 1 ] ) )
+        //                    P( v );
+        //            }
+        //        }
+
+        for( std::size_t num_cell = 0; num_cell < grid.cells.size() - 1; ++num_cell )
+            ASSERT( grid.ng_offsets[ num_cell + 1 ] - grid.ng_offsets[ num_cell + 0 ] == neighbors[ num_cell ].size(), "" );
+    }
+
     return true;
 }
 
@@ -295,7 +366,7 @@ void ZGrid<Pc>::update_the_limits( const Pt *positions, const TF *weights, std::
 
     int nb_grids = 1 + floor( ( max_weight - min_weight ) / max_delta_weight_per_grid );
     grids.resize( nb_grids );
-    // P( nb_grids );
+    P( nb_grids );
     
     //
     grid_length = 0;
@@ -342,7 +413,7 @@ void ZGrid<Pc>::update_neighbors( TI num_grid ) {
 
             // next touching ones
             TZ off = zcells[ index_node + 1 ].zcoords - zcells[ index_node ].zcoords;
-            TZ lim = zcells[ index_nbor     ].zcoords + off;
+            TZ lim = zcells[ index_nbor ].zcoords + off;
             if ( zcells[ index_nbor + 1 ].zcoords < lim ) {
                 std::array<TZ,dim> tgts;
                 StaticRange<dim>::for_each( [&]( auto d ) {
@@ -573,7 +644,7 @@ typename ZGrid<Pc>::TZ ZGrid<Pc>::zcoords_for( const C &pos ) {
 }
 
 template<class Pc> template<class V>
-void ZGrid<Pc>::display( V &vtk_output ) const {
+void ZGrid<Pc>::display( V &vtk_output, TF z ) const {
     for( std::size_t num_grid = 0; num_grid < grids.size(); ++num_grid ) {
         const Grid &grid = grids[ num_grid ];
 
@@ -586,11 +657,11 @@ void ZGrid<Pc>::display( V &vtk_output ) const {
             switch ( dim ) {
             case 2:
                 vtk_output.add_lines( {
-                    Point2<TF>{ p[ 0 ] + a, p[ 1 ] + a },
-                    Point2<TF>{ p[ 0 ] + b, p[ 1 ] + a },
-                    Point2<TF>{ p[ 0 ] + b, p[ 1 ] + b },
-                    Point2<TF>{ p[ 0 ] + a, p[ 1 ] + b },
-                    Point2<TF>{ p[ 0 ] + a, p[ 1 ] + a },
+                    Point3<TF>{ p[ 0 ] + a, p[ 1 ] + a, z * num_grid },
+                    Point3<TF>{ p[ 0 ] + b, p[ 1 ] + a, z * num_grid },
+                    Point3<TF>{ p[ 0 ] + b, p[ 1 ] + b, z * num_grid },
+                    Point3<TF>{ p[ 0 ] + a, p[ 1 ] + b, z * num_grid },
+                    Point3<TF>{ p[ 0 ] + a, p[ 1 ] + a, z * num_grid },
                 }, { TF( num_grid ) } );
                 break;
             case 3:

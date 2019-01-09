@@ -64,7 +64,13 @@ private:
 
     struct                  Poly {
         enum {              nc = dim * ( dim + 3 ) / 2 + 1 };
+
+        TF                  value( Pt p ) const;
+
         std::array<TF,nc>   coeffs;
+        TF                  delta;
+        Pt                  p0;
+        Pt                  p1;
     };
 
     void                    _subdivide_add_poly_rec( Pt *positions, TF *weights, TI nb_diracs, Pt p0, Pt p1, int num );

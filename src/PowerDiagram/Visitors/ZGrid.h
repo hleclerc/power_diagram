@@ -45,7 +45,7 @@ public:
 
     bool                    check_sanity          ( const Pt *positions ) const;
     std::size_t             nb_levels             () const { return grids.size(); }
-    template<class V> void  display               ( V &vtk_output ) const; ///< for debug purpose
+    template<class V> void  display               ( V &vtk_output, TF z = 0 ) const; ///< for debug purpose
 
     // values used by init
     TF                      max_delta_weight_per_grid;
@@ -106,7 +106,7 @@ private:
     std::vector<Grid>       grids;                 ///< for each weight span
 
 public:
-    std::vector<Cell> fc;
+    std::vector<Point3<TF>> proute_cells;
 };
 
 } // namespace Visitor

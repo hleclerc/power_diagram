@@ -1,8 +1,29 @@
 #include "../src/PowerDiagram/Bounds/ConvexPolyhedronAssembly.h"
 #include "../src/PowerDiagram/Visitors/ZGridPol.h"
+#include "../src/PowerDiagram/triangulation.h"
 #include "catch_main.h"
 
 //// nsmake cpp_flag -march=native
+
+template<class Pt,class TF>
+void read_xyw( std::vector<Pt> &positions, std::vector<TF> &weights, std::string file ) {
+    using std::min;
+
+    std::ifstream f( file.c_str() );
+    positions.resize( 0 );
+    weights.resize( 0 );
+    double x, y, w;
+    while ( f >> x >> y >> w ) {
+        positions.push_back( { x, y } );
+        weights.push_back( w );
+    }
+
+    TF min_w = std::numeric_limits<TF>::max();
+    for( TF w : weights )
+        min_w = min( min_w, w );
+    for( TF &w : weights )
+        w -= min_w;
+}
 
 TEST_CASE( "ZGrid pol measures" ) {
     struct Pc     { enum { dim = 2 }; using TI = std::size_t; using TF = double; };
@@ -11,21 +32,24 @@ TEST_CASE( "ZGrid pol measures" ) {
 
     std::vector<Grid::Pt> positions;
     std::vector<Grid::TF> weights;
-    for( std::size_t i = 0; i < 100; ++i ) {
-        double x = 1.0 * rand() / RAND_MAX;
-        double y = 1.0 * rand() / RAND_MAX;
-        positions.push_back( { x, y } );
-        weights.push_back( sin( 2 * ( x + y ) ) );
-    }
+    read_xyw( positions, weights, "vtk/random_100000.xyw" );
+    //    for( std::size_t i = 0; i < 100; ++i ) {
+    //        double x = 1.0 * rand() / RAND_MAX;
+    //        double y = 1.0 * rand() / RAND_MAX;
+    //        positions.push_back( { x, y } );
+    //        weights.push_back( sin( 2 * ( x + y ) ) );
+    //    }
 
     //    Bounds bounds;
     //    bounds.add_box( { 0, 0 }, { 1, 1 }, 1.0, -1 );
 
-    Grid grid( 2 );
+    Grid grid( 40 );
     grid.update( positions.data(), weights.data(), positions.size() );
 
     VtkOutput<1> vo( { "num" } );
     grid.display( vo );
+    for( std::size_t i = 0; i < weights.size(); ++i )
+        vo.add_point( Point3<double>{ positions[ i ].x, positions[ i ].y, weights[ i ] }, { double( i ) } );
     vo.save( "vtk/grid.vtk" );
 
     //    VtkOutput<1> vo( { "num" } );

@@ -27,6 +27,7 @@ int main( int argc, char **argv ) {
         ( "t,nb-threads"            , "...", cxxopts::value<int>()->default_value( "0" ) )
         ( "v,vtk-output"            , "", cxxopts::value<std::string>() )
         ( "n,nb-diracs"             , "...", cxxopts::value<double>()->default_value( "100" ) )
+        ( "max-iter"                , "...", cxxopts::value<int>()->default_value( "100" ) )
         ( "o,output"                , "", cxxopts::value<std::string>() )
         ( "h,help"                  , "get help" )
         ;
@@ -51,14 +52,15 @@ int main( int argc, char **argv ) {
 
     // solve
     PowerDiagram::OptimalTransportSolver<Grid,Bounds> solver( &grid, &bounds );
+    solver.max_nb_iter = args[ "max-iter" ].as<int>();
     solver.solve( positions.data(), weights.data(), weights.size() );
     //        P( solver.volume( diracs ), err );
 
-    if ( args.count( "vtk-output" ) ) {
-        VtkOutput<1> vtk_output( { "weight" } );
-        solver.display( vtk_output, positions.data(), weights.data(), weights.size() );
-        vtk_output.save( args[ "vtk-output" ].as<std::string>() + ".vtk" );
-    }
+    //    if ( args.count( "vtk-output" ) ) {
+    //        VtkOutput<2> vtk_output( { "weight", "num" } );
+    //        solver.display( vtk_output, positions.data(), weights.data(), weights.size() );
+    //        vtk_output.save( args[ "vtk-output" ].as<std::string>() + ".vtk" );
+    //    }
 
     //
     if ( args.count( "output" ) ) {
@@ -74,7 +76,15 @@ int main( int argc, char **argv ) {
     // display weights, on a voronoi diagram
     if ( args.count( "vtk-output" ) ) {
         VtkOutput<1> vtk_output( { "weight" } );
-        solver.display_orig_pts( vtk_output, positions.data(), weights.data(), weights.size() );
+        //solver.display_orig_pts( vtk_output, positions.data(), weights.data(), weights.size() );
+
+        grid.display( vtk_output, 0.03 );
+        // double cpt = 0;
+        // P( grid.proute_cells );
+        //        for( auto cell : grid.proute_cells )
+        //            vtk_output.add_point( { cell.x, cell.y, 0.03 * cell.z }, { cell.z } );
+        vtk_output.add_lines( grid.proute_cells );
+
         vtk_output.save( args[ "vtk-output" ].as<std::string>() + "_orig_pts.vtk" );
     }
 }
