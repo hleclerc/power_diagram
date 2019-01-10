@@ -22,6 +22,7 @@ int main( int argc, char **argv ) {
     options.add_options()
         ( "m,max-dirac-per-cell"    , "...", cxxopts::value<int>()->default_value( "11" ) )
         ( "r,max-delta-weight"      , "...", cxxopts::value<double>()->default_value( "1e40" ) )
+        ( "eq-w-repartition"        , "..." )
         ( "d,distribution"          , "distribution name (regular, random, ...)", cxxopts::value<std::string>()->default_value( "regular" ) )
         ( "t,nb-threads"            , "...", cxxopts::value<int>()->default_value( "0" ) )
         ( "v,vtk-output"            , "", cxxopts::value<std::string>() )
@@ -43,6 +44,7 @@ int main( int argc, char **argv ) {
     // grid
     using Grid = PowerDiagram::Visitor::ZGrid<Pc>;
     Grid grid( args[ "max-dirac-per-cell" ].as<int>(), args[ "max-delta-weight" ].as<double>() );
+    grid.eq_rep_weight_split = args.count( "eq-w-repartition" );
 
     // Bounds
     using Bounds = PowerDiagram::Bounds::ConvexPolyhedronAssembly<Pc>;

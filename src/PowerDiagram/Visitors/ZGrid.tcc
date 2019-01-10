@@ -7,6 +7,8 @@
 #include <cmath>
 #include <set>
 
+#include <matplotlibcpp.h>
+
 // #define DISPLAY_nb_explored_cells
 
 namespace PowerDiagram {
@@ -15,6 +17,7 @@ namespace Visitor {
 
 template<class Pc>
 ZGrid<Pc>::ZGrid( std::size_t max_diracs_per_cell, TF max_delta_weight_per_grid ) : max_delta_weight_per_grid( max_delta_weight_per_grid ), max_diracs_per_cell( max_diracs_per_cell ) {
+    eq_rep_weight_split = false;
     ball_cut = allow_ball_cut;
 }
 
@@ -337,6 +340,7 @@ void ZGrid<Pc>::update_the_limits( const Pt *positions, const TF *weights, std::
     using std::min;
     using std::max;
 
+    // min/max
     for( std::size_t d = 0; d < dim; ++d ) {
         min_point[ d ] = + std::numeric_limits<TF>::max();
         max_point[ d ] = - std::numeric_limits<TF>::max();
@@ -353,11 +357,37 @@ void ZGrid<Pc>::update_the_limits( const Pt *positions, const TF *weights, std::
         max_weight = max( max_weight, weights[ num_dirac ] );
     }
 
-    int nb_grids = 1 + floor( ( max_weight - min_weight ) / max_delta_weight_per_grid );
-    grids.resize( nb_grids );
-    P( nb_grids );
-    
-    //
+    // grid splitting
+    if ( max_weight == min_weight ) {
+        grids.resize( 1 );
+        TODO;
+    } else {
+        //
+        TI nb_grids = 1 + floor( ( max_weight - min_weight ) / max_delta_weight_per_grid );
+        grids.resize( nb_grids );
+        P( nb_grids );
+
+        //
+        if ( eq_rep_weight_split ) {
+            std::vector<TF> hist_weight( 1 + nb_diracs / 10 );
+            TF inv_dw = hist_weight.size() / ( max_weight - min_weight ) * ( 1 - std::numeric_limits<TF>::epsilon() );
+            for( TI num_dirac = 0; num_dirac < nb_diracs; ++num_dirac )
+                ++hist_weight[ inv_dw * ( weights[ num_dirac ] - min_weight ) ];
+            for( TI n = 0, a = 0; n < hist_weight.size(); ++n )
+                hist_weight[ n ] = ( a += hist_weight[ n ] );
+
+            num_grid_vs_weight.resize( hist_weight.size() );
+            for( TI num_grid = 0, off = 0; num_grid < nb_grids; ++num_grid ) {
+                TF lim = hist_weight.back() * ( num_grid + 1 ) / nb_grids, old_off = off;
+                while ( hist_weight[ off ] < lim )
+                    ++off;
+                for( ; old_off < off; ++old_off )
+                    num_grid_vs_weight[ old_off ] = num_grid;
+            }
+        }
+    }
+
+    // grid size
     grid_length = 0;
     for( std::size_t d = 0; d < dim; ++d )
         grid_length = max( grid_length, max_point[ d ] - min_point[ d ] );
@@ -579,9 +609,17 @@ void ZGrid<Pc>::fill_the_grids( const Pt *positions, const TF *weights, std::siz
     if ( grids.size() > 1 ) {
         for( std::size_t num_grid = 0; num_grid < grids.size(); ++num_grid )
             grids[ num_grid ].dirac_indices.clear();
-        for( std::size_t num_dirac = 0; num_dirac < nb_diracs; ++num_dirac ) {
-            int num_grid = ( weights[ num_dirac ] - min_weight ) / max_delta_weight_per_grid;
-            grids[ num_grid ].dirac_indices.push_back( num_dirac );
+        if ( eq_rep_weight_split ) {
+            TF inv_w = num_grid_vs_weight.size() / ( max_weight - min_weight ) * ( 1 - std::numeric_limits<TF>::epsilon() );
+            for( std::size_t num_dirac = 0; num_dirac < nb_diracs; ++num_dirac ) {
+                int num_grid = num_grid_vs_weight[ inv_w * ( weights[ num_dirac ] - min_weight ) ];
+                grids[ num_grid ].dirac_indices.push_back( num_dirac );
+            }
+        } else {
+            for( std::size_t num_dirac = 0; num_dirac < nb_diracs; ++num_dirac ) {
+                int num_grid = ( weights[ num_dirac ] - min_weight ) / max_delta_weight_per_grid;
+                grids[ num_grid ].dirac_indices.push_back( num_dirac );
+            }
         }
     }
 

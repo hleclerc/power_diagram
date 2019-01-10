@@ -50,6 +50,7 @@ public:
     // values used by init
     TF                      max_delta_weight_per_grid;
     int                     max_diracs_per_cell;
+    bool                    eq_rep_weight_split;
     bool                    ball_cut;
 
 private:
@@ -97,6 +98,7 @@ private:
     std::vector<ZNode>      zcells;                ///<
 
     //
+    std::vector<TI>         num_grid_vs_weight;    ///<
     TF                      step_length;
     TF                      grid_length;
     TF                      min_weight;
