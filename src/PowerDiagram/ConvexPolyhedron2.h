@@ -63,7 +63,8 @@ public:
 
     // modifications
     void                      set_cut_ids               ( CI cut_id ); ///< replace all the cut_ids
-    void                      plane_cut                 ( Pt origin, Pt normal, CI cut_id = {} );
+    template<int no> bool     plane_cut                 ( Pt origin, Pt normal, CI cut_id, N<no> normal_is_normalized ); ///< return true if effective cut
+    bool                      plane_cut                 ( Pt origin, Pt normal, CI cut_id = {} ); ///< return true if effective cut
     void                      ball_cut                  ( Pt center, TF radius, CI cut_id = {} ); ///< beware: only one sphere cut is authorized, and it must be done after all the plane cuts.
     void                      clear                     ( Pt englobing_center, TF englobing_radius, CI englobing_cut_id = {} );
 

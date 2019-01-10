@@ -87,7 +87,7 @@ private:
     void                    fill_the_grids         ( const Pt *positions, const TF *weights, std::size_t nb_diracs );
     template<class C> TZ    zcoords_for            ( const C &pos ); ///< floating point position
     template<int d>   TZ    ng_zcoord              ( TZ zcoords, TZ off, N<d> ) const;
-    bool                    may_cut                ( const CP &lc, TI i0, const Grid &cr_grid, const Cell &cr_cell, const Pt *positions, const TF *weights );
+    bool                    may_cut                ( const CP &lc, TI i0, const Grid &cr_grid, const Cell &cr_cell, const Pt *positions, const TF *weights ) __attribute__((noinline));
 
     // true if a dirac in b1 (given max_weight in b1 and its neighbors) may cut lc
 
@@ -106,9 +106,6 @@ private:
     Pt                      min_point;
     Pt                      max_point;
     std::vector<Grid>       grids;                 ///< for each weight span
-
-public:
-    std::vector<Point3<TF>> proute_cells;
 };
 
 } // namespace Visitor

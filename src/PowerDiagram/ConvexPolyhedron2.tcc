@@ -245,28 +245,33 @@ void ConvexPolyhedron2<Pc,CI>::ball_cut( Pt center, TF radius, CI cut_id ) {
 }
 
 template<class Pc,class CI>
-void ConvexPolyhedron2<Pc,CI>::plane_cut( Pt origin, Pt normal, CI cut_id ) {
-    const std::size_t alig_nb_points = nb_points - nb_points % simd_size;
+bool ConvexPolyhedron2<Pc,CI>::plane_cut( Pt origin, Pt normal, CI cut_id ) {
+    return plane_cut( origin, normal, cut_id, N<1>() );
+}
+
+template<class Pc,class CI> template<int no>
+bool ConvexPolyhedron2<Pc,CI>::plane_cut( Pt origin, Pt normal, CI cut_id, N<no> normal_is_normalized ) {
     if ( nb_points > 64 )
         TODO;
 
-    auto ox = BF( origin.x );
-    auto oy = BF( origin.y );
-    auto nx = BF( normal.x );
-    auto ny = BF( normal.y );
+    //    auto ox = BF( origin.x );
+    //    auto oy = BF( origin.y );
+    //    auto nx = BF( normal.x );
+    //    auto ny = BF( normal.y );
 
     alignas( 64 ) AF distances;
     std::uint64_t outside = 0;
-    for( std::size_t i = 0; i < alig_nb_points; i += simd_size ) {
-        auto px = xsimd::load_aligned( &points[ 0 ][ i ] );
-        auto py = xsimd::load_aligned( &points[ 1 ][ i ] );
-        auto d = ( ox - px ) * nx + ( oy - py ) * ny;
-        auto n = d < BF( TF( 0 ) );
-        d.store_aligned( &distances[ i ] );
+    const std::size_t alig_nb_points = 0; // nb_points - nb_points % simd_size;
+    //    for( std::size_t i = 0; i < alig_nb_points; i += simd_size ) {
+    //        auto px = xsimd::load_aligned( &points[ 0 ][ i ] );
+    //        auto py = xsimd::load_aligned( &points[ 1 ][ i ] );
+    //        auto d = ( ox - px ) * nx + ( oy - py ) * ny;
+    //        auto n = d < BF( TF( 0 ) );
+    //        d.store_aligned( &distances[ i ] );
 
-        for( std::size_t j = 0; j < simd_size; ++j )
-            outside |= std::uint64_t( n[ j ] ) << ( i + j );
-    }
+    //        for( std::size_t j = 0; j < simd_size; ++j )
+    //            outside |= std::uint64_t( n[ j ] ) << ( i + j );
+    //    }
 
     for( std::size_t i = alig_nb_points; i < nb_points; ++i ) {
         auto px = points[ 0 ][ i ];
@@ -278,13 +283,23 @@ void ConvexPolyhedron2<Pc,CI>::plane_cut( Pt origin, Pt normal, CI cut_id ) {
 
     // all inside ?
     if ( outside == 0 )
-        return;
+        return false;
 
     // all outside ?
     std::size_t nb_outside = _mm_popcnt_u64( outside );
     if ( nb_outside == nb_points ) {
         nb_points = 0;
-        return;
+        return false;
+    }
+
+    //
+    if ( normal_is_normalized.val == 0 ) {
+        TF n = 1 / norm_2( normal );
+        for( std::size_t i = 0; i < alig_nb_points; i += simd_size )
+            xsimd::store_aligned( &distances[ i ], n * xsimd::load_aligned( &distances[ i ] ) );
+        for( std::size_t i = alig_nb_points; i < nb_points; ++i )
+            distances[ i ] *= n;
+        normal = n * normal;
     }
 
     // only 1 outside
@@ -337,7 +352,7 @@ void ConvexPolyhedron2<Pc,CI>::plane_cut( Pt origin, Pt normal, CI cut_id ) {
             normals[ 1 ][ i1 + 0 ] = normal[ 1 ];
         }
 
-        return;
+        return true;
     }
 
     // 2 points are outside
@@ -371,7 +386,7 @@ void ConvexPolyhedron2<Pc,CI>::plane_cut( Pt origin, Pt normal, CI cut_id ) {
         points[ 0 ][ i2 ] = p3.x - m2 * ( p2.x - p3.x );
         points[ 1 ][ i2 ] = p3.y - m2 * ( p2.y - p3.y );
 
-        return;
+        return true;
     }
 
     // more than 2 points are outside, outside points are before and after bit 0
@@ -421,7 +436,7 @@ void ConvexPolyhedron2<Pc,CI>::plane_cut( Pt origin, Pt normal, CI cut_id ) {
         }
 
         nb_points -= nb_outside - 2;
-        return;
+        return true;
     }
 
     // more than 2 points are outside, outside points do not cross `nb_points`
@@ -544,6 +559,8 @@ void ConvexPolyhedron2<Pc,CI>::plane_cut( Pt origin, Pt normal, CI cut_id ) {
     //    cf( _cuts.size() - 1, 0 );
 
     //    std::swap( _old_cuts, _cuts );
+
+    return true;
 }
 
 

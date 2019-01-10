@@ -22,20 +22,7 @@ void FrontZgrid<ZG>::set_visited( const std::vector<Grid> &grids, TI num_grid, T
 
 template<class ZG> template<class Cell>
 typename FrontZgrid<ZG>::TF FrontZgrid<ZG>::dist( const Cell &cell, TF max_weight ) {
-    using std::sqrt;
-    using std::max;
-
-    //    Pt V = cell.pos - orig_position;
-    //    TF n = norm_2_p2( V );
-    //    TF x = TF( 1 ) + max( orig_weight - max_weight, TF( 0 ) ) / n;
-    //    return x * sqrt( n );
-
-    TF res = 0;
-    for( int d = 0; d < dim; ++d ) {
-        TF v = cell.pos[ d ] - orig_position[ d ];
-        res += v * v;
-    }
-    return res;
+    return norm_2_p2( cell.pos - orig_position );
 }
 
 template<class ZG> template<class Grid>

@@ -528,7 +528,7 @@ struct BinStream {
     CmString read_CmString() { ///< works only for CmQueue, CmString or similar (assumes that the data won't be freed)
         PT size = read();
         if ( error() or not buf->ack_read_some( size ) )
-            return { 0, 0 };
+            return { (const void *)0, (const void *)0 };
         const PI8 *data = buf->ptr();
         skip_some( size );
         return { data, data + size };

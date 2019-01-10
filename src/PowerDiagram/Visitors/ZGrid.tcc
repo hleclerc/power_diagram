@@ -7,10 +7,6 @@
 #include <cmath>
 #include <set>
 
-#include <matplotlibcpp.h>
-
-// #define DISPLAY_nb_explored_cells
-
 namespace PowerDiagram {
 namespace Visitor {
 
@@ -52,8 +48,6 @@ bool ZGrid<Pc>::may_cut( const CP &lc, TI i0, const Grid &cr_grid, const Cell &c
 
         return md < pow( sqrt( cr_grid.max_weight ) + sqrt( w0 ), 2 );
     }
-
-    // return true;
 
     //
     const Pt A{ cr_cell.pos.x               , cr_cell.pos.y                };
@@ -148,17 +142,28 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
     using Front = FrontZgrid<ZGrid>;
     using std::sqrt;
 
-    auto plane_cut = [&]( CP &lc, TI i0, TI i1, TI num_grid ) {
-        if ( i0 == 5546 ) {
-            proute_cells.push_back( { positions[ i0 ].x, positions[ i0 ].y, TF( 0.03 * 2 ) } );
-            proute_cells.push_back( { positions[ i1 ].x, positions[ i1 ].y, TF( 0.03 * num_grid ) } );
-        }
+    //    struct Ratio {
+    //        Ratio() : c( 0 ), t( 0 ) {
+    //        }
+    //        ~Ratio() {
+    //            P( t, TF( c ) / TF( t ) );
+    //        }
+    //        void operator()( bool v ) {
+    //            if ( v )
+    //                ++c;
+    //            ++t;
+    //        }
+    //        std::atomic<TI> c, t;
+    //    };
+    //    static Ratio ratio;
 
+    auto plane_cut = [&]( CP &lc, TI i0, TI i1, TI num_grid ) {
         Pt V = positions[ i1 ] - positions[ i0 ];
         TF n = norm_2_p2( V );
-        TF x = TF( 1 ) + ( weights[ i0 ] - weights[ i1 ] ) / n;
-        TF i = TF( 1 ) / sqrt( n );
-        lc.plane_cut( positions[ i0 ] + TF( 0.5 ) * x * V, i * V, i1 );
+        TF x = TF( 0.5 ) + TF( 0.5 ) * ( weights[ i0 ] - weights[ i1 ] ) / n;
+        //        TF i = TF( 1 ) / sqrt( n );
+        lc.plane_cut( positions[ i0 ] + x * V, /*i * */V, i1, N<0>() );
+        // ratio( cut );
     };
 
     // vectors for stuff that will be reused inside the execution threads
@@ -172,10 +177,6 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
             visited[ num_thread ][ num_grid ].resize( grids[ num_grid ].cells.size(), op_counts[ num_thread ] );
     }
 
-    #ifdef DISPLAY_nb_explored_cells
-    std::vector<std::size_t> nb_explored_cells( nb_threads, 0 );
-    #endif // DISPLAY_nb_explored_cells
-
     // for each item
     int err = 0;
     for( std::size_t num_grid = 0; num_grid < grids.size(); ++num_grid ) {
@@ -185,6 +186,8 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
             Front front( op_counts[ num_thread ], visited[ num_thread ] );
             CP lc;
 
+            std::vector<TI> sorted_diracs_indices;
+
             TI beg_cell = ( num_job + 0 ) * ( grid.cells.size() - 1 ) / nb_jobs;
             TI end_cell = ( num_job + 1 ) * ( grid.cells.size() - 1 ) / nb_jobs;
             for( TI num_cell = beg_cell; num_cell < end_cell && err == 0; ++num_cell ) {
@@ -192,9 +195,20 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
                 for( TI num_dirac : Span<TI>{ grid.dpc_values.data() + cell.dpc_offset, grid.dpc_values.data() + grid.cells[ num_cell + 1 ].dpc_offset } ) {
                     // start of lc: cut with nodes in the same cell
                     lc = starting_lc;
+
                     for( TI num_cr_dirac : Span<TI>{ grid.dpc_values.data() + cell.dpc_offset, grid.dpc_values.data() + grid.cells[ num_cell + 1 ].dpc_offset } )
                         if ( num_cr_dirac != num_dirac )
                             plane_cut( lc, num_dirac, num_cr_dirac, num_grid );
+
+                    //                                        sorted_diracs_indices = { grid.dpc_values.data() + cell.dpc_offset, grid.dpc_values.data() + grid.cells[ num_cell + 1 ].dpc_offset };
+                    //                                        std::sort( sorted_diracs_indices.begin(), sorted_diracs_indices.end(), [&]( TI ia, TI ib ) {
+                    //                                            TF da = norm_2_p2( positions[ ia ] - positions[ num_dirac ] );
+                    //                                            TF db = norm_2_p2( positions[ ib ] - positions[ num_dirac ] );
+                    //                                            return da < db;
+                    //                                        } );
+                    //                                        for( TI num_cr_dirac : sorted_diracs_indices )
+                    //                                            if ( num_cr_dirac != num_dirac )
+                    //                                                plane_cut( lc, num_dirac, num_cr_dirac, num_grid );
 
                     // front
                     front.init( grids, num_grid, num_cell, positions[ num_dirac ], weights[ num_dirac ] );
@@ -223,9 +237,6 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
                     // neighbors
                     while( ! front.empty() ) {
                         typename Front::Item cr = front.pop();
-                        #ifdef DISPLAY_nb_explored_cells
-                        ++nb_explored_cells[ num_thread ];
-                        #endif // DISPLAY_nb_explored_cells
 
                         const Grid &cr_grid = grids[ cr.num_grid ];
                         const Cell &cr_cell = cr_grid.cells[ cr.num_cell ];
@@ -259,15 +270,6 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
             }
         } );
     }
-
-    #ifdef DISPLAY_nb_explored_cells
-    TI nen = 0, tot = 0;
-    for( TI n : nb_explored_cells )
-        nen += n;
-    for( const Grid &grid : grids )
-        tot += grid.cells.size();
-    P( tot, nen / nb_diracs );
-    #endif // DISPLAY_nb_explored_cells
 
     return err;
 }
@@ -359,8 +361,9 @@ void ZGrid<Pc>::update_the_limits( const Pt *positions, const TF *weights, std::
 
     // grid splitting
     if ( max_weight == min_weight ) {
+        if ( eq_rep_weight_split )
+            num_grid_vs_weight = { 0 };
         grids.resize( 1 );
-        TODO;
     } else {
         //
         TI nb_grids = 1 + floor( ( max_weight - min_weight ) / max_delta_weight_per_grid );
