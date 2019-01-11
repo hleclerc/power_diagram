@@ -2,7 +2,7 @@
 #include "OptimalTransportSolver.h"
 #include "traversal_cgal.h"
 #include "get_integrals.h"
-// #include "AmgclSolver.h"
+//#include "AmgclSolver.h"
 #include "EigenSolver.h"
 #include "system/Tick.h"
 #include "VtkOutput.h"
@@ -50,12 +50,12 @@ void OptimalTransportSolver<Grid, Bounds>::solve( const Pt *positions, TF *weigh
         t0 = Tick::get_time();
         int error = get_der_integrals_wrt_weights( m_offsets, m_columns, m_values, v_values, grid, bounds, positions, weights, nb_diracs );
         auto t0_der = Tick::elapsed_since( t0 );
-        m_values[ 0 ] *= 2;
+        if ( m_values.size() )
+            m_values[ 0 ] *= 2;
 
-        TF vol = 0;
-        for( std::size_t i = 0; i < nb_diracs; ++i )
-            vol += v_values[ i ];
-        P( vol );
+        t0 = Tick::get_time();
+        traversal_cgal( reinterpret_cast<const TF *>( positions ), weights, nb_diracs );
+        timings_cgal.push_back( Tick::elapsed_since( t0 ) );
 
         // go back if pb
         if ( error ) {
@@ -71,16 +71,20 @@ void OptimalTransportSolver<Grid, Bounds>::solve( const Pt *positions, TF *weigh
 
         timings_der.push_back( t0_der );
 
+        TF vol = 0;
+        for( std::size_t i = 0; i < nb_diracs; ++i )
+            vol += v_values[ i ];
+        P( vol );
+
+        if ( max_nb_iter == 1 )
+            break;
+
         // solve
         EigenSolver es;
         // AmgclSolver es;
         t0 = Tick::get_time();
         es.solve( dw, m_offsets, m_columns, m_values, v_values );
         timings_solve.push_back( Tick::elapsed_since( t0 ) );
-
-        t0 = Tick::get_time();
-        traversal_cgal( reinterpret_cast<const TF *>( positions ), weights, nb_diracs );
-        timings_cgal.push_back( Tick::elapsed_since( t0 ) );
 
         TF mdw = 0;
         for( std::size_t i = 0; i < nb_diracs; ++i ) {

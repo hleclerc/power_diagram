@@ -1,5 +1,6 @@
 #include "ConvexPolyhedron2.h"
 #include "AreaOutput.h"
+#include <immintrin.h>
 
 namespace PowerDiagram {
 
@@ -123,18 +124,7 @@ void ConvexPolyhedron2<Pc,CI>::ball_cut( Pt center, TF radius, CI cut_id ) {
     // distances
     bool all_inside = true;
     alignas( 64 ) AF distances;
-    const std::size_t alig_nb_points = nb_points - nb_points % simd_size;
-    for( std::size_t i = 0; i < alig_nb_points; i += simd_size ) {
-        auto px = xsimd::load_aligned( &points[ 0 ][ i ] );
-        auto py = xsimd::load_aligned( &points[ 1 ][ i ] );
-        auto d = pow( px - center.x, 2 ) + pow( py - center.y, 2 ) - pow( radius, 2 );
-        d.store_aligned( &distances[ i ] );
-
-        for( std::size_t j = 0; j < simd_size; ++j )
-            all_inside &= d[ j ] <= 0;
-    }
-
-    for( std::size_t i = alig_nb_points; i < nb_points; ++i ) {
+    for( std::size_t i = 0; i < nb_points; ++i ) {
         auto px = points[ 0 ][ i ];
         auto py = points[ 1 ][ i ];
         auto d = pow( px - center.x, 2 ) + pow( py - center.y, 2 ) - pow( radius, 2 );
@@ -295,9 +285,7 @@ bool ConvexPolyhedron2<Pc,CI>::plane_cut( Pt origin, Pt normal, CI cut_id, N<no>
     //
     if ( normal_is_normalized.val == 0 ) {
         TF n = 1 / norm_2( normal );
-        for( std::size_t i = 0; i < alig_nb_points; i += simd_size )
-            xsimd::store_aligned( &distances[ i ], n * xsimd::load_aligned( &distances[ i ] ) );
-        for( std::size_t i = alig_nb_points; i < nb_points; ++i )
+        for( std::size_t i = 0; i < nb_points; ++i )
             distances[ i ] *= n;
         normal = n * normal;
     }

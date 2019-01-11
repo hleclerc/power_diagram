@@ -280,6 +280,7 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
                             continue;
 
                         // if we have diracs in cr that may cut, try them
+                        // if ( cr_cell.max_weight > min_w )
                         for( TI num_cr_dirac : Span<TI>{ cr_grid.dpc_values.data() + cr_cell.dpc_offset, cr_grid.dpc_values.data() + cr_grid.cells[ cr.num_cell + 1 ].dpc_offset } )
                             if ( weights[ num_cr_dirac ] > min_w )
                                 plane_cut( lc, c0, w0, num_cr_dirac );
@@ -666,7 +667,7 @@ void ZGrid<Pc>::fill_the_grids( const Pt *positions, const TF *weights, std::siz
     for( std::size_t num_grid = 0; num_grid < grids.size(); ++num_grid ) {
         fill_grid_using_zcoords( num_grid, positions, weights, nb_diracs );
         update_neighbors       ( num_grid );
-        repl_zcoords_by_ccoords( num_grid );
+        repl_zcoords_by_ccoords( num_grid, weights );
     }
 
     // cousins
@@ -744,7 +745,9 @@ typename ZGrid<Pc>::TZ ZGrid<Pc>::ng_zcoord( TZ zcoords, TZ off, N<axis> ) const
 }
 
 template<class Pc>
-void ZGrid<Pc>::repl_zcoords_by_ccoords( TI num_grid ) {
+void ZGrid<Pc>::repl_zcoords_by_ccoords( TI num_grid, const TF *weights ) {
+    using std::max;
+
     Grid &grid = grids[ num_grid ];
 
     // convert zcoords to cartesian coords
@@ -772,6 +775,14 @@ void ZGrid<Pc>::repl_zcoords_by_ccoords( TI num_grid ) {
     c.zcoords = zcells.back().zcoords;
     c.size = 0;
     c.pos = max_point;
+
+    //    // update cell.max_weight
+    //    for( TI i = 0; i < grid.cells.size() - 1; ++i ) {
+    //        TF v = - std::numeric_limits<TF>::max();
+    //        for( TI dirac_index : Span<TI>( grid.dpc_values.data() + grid.cells[ i + 0 ].dpc_offset, grid.dpc_values.data() + grid.cells[ i + 1 ].dpc_offset ) )
+    //            v = max( v, weights[ dirac_index ] );
+    //        grid.cells[ i ].max_weight = v;
+    //    }
 }
 
 template<class Pc>

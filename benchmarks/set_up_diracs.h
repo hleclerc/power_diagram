@@ -3,6 +3,7 @@
 #include "../src/PowerDiagram/system/Assert.h"
 #include "../src/PowerDiagram/Point2.h"
 #include <fstream>
+#include <random>
 #include <vector>
 #include <string>
 #include <cmath>
@@ -32,6 +33,24 @@ void set_up_diracs( std::vector<Pt> &positions, std::vector<TF> &weights, std::s
         for( TI i = 0; i < nb_diracs; ++i ) {
             positions[ i ] = { 1.0 * rand() / RAND_MAX, 1.0 * rand() / RAND_MAX };
             weights[ i ] = 1.0;
+        }
+        return;
+    }
+
+    if ( distribution == "gaussian" ) {
+        positions.resize( 0 );
+        weights.resize( 0 );
+
+        std::default_random_engine generator;
+        std::normal_distribution<double> distribution( 0.5, 0.1 );
+
+        while ( weights.size() < nb_diracs ) {
+            double x = distribution( generator );
+            double y = distribution( generator );
+            if ( x > 0 && x < 1 && y > 0 && y < 1 ) {
+                positions.push_back( { x, y } );
+                weights.push_back( 1.0 );
+            }
         }
         return;
     }
@@ -109,6 +128,21 @@ void set_up_diracs( std::vector<Pt> &positions, std::vector<TF> &weights, std::s
             positions.push_back( { x, y } );
             weights.push_back( w );
         }
+
+        return;
+    }
+
+    if ( distribution == "2:100" ) {
+        positions.resize( 0 );
+        weights.resize( 0 );
+
+        for( double j = 0; j <= 1; j += 1 ) {
+            for( double i = 0; i <= 1; i += 1 ) {
+                positions.push_back( { i, j } );
+                weights.push_back( 1 + 0.5 * ( i == 0 && j == 0 ) );
+            }
+        }
+        P( weights );
 
         return;
     }

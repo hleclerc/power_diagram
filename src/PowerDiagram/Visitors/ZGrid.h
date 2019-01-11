@@ -54,6 +54,7 @@ public:
 private:
     struct                  Cell {
         TI                  dpc_offset;                 ///< offsets in grid.dpc_values
+        // TF               max_weight;
         TZ                  zcoords;
         TF                  size;
         Pt                  pos;
@@ -78,7 +79,7 @@ private:
     };
 
     void                    fill_grid_using_zcoords( TI num_grid, const Pt *positions, const TF *weights, std::size_t nb_diracs );
-    void                    repl_zcoords_by_ccoords( TI num_grid );
+    void                    repl_zcoords_by_ccoords( TI num_grid, const TF *weights );
     void                    find_englobing_cousins ( TI num_grid, const Pt *positions ); ///< find englobing cells for each dirac (and for each grid). Must be done after repl_zcoords_by_ccoords
     void                    update_the_limits      ( const Pt *positions, const TF *weights, std::size_t nb_diracs );
     void                    update_neighbors       ( TI num_grid );

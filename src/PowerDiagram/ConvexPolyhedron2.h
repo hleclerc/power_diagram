@@ -7,9 +7,6 @@
 #include <algorithm>
 #include <bitset>
 
-#define XSIMD_ENABLE_FALLBACK
-#include <xsimd/xsimd.hpp>
-
 namespace PowerDiagram {
 
 /**
@@ -31,9 +28,6 @@ public:
     using                     Pt                        = Point2<TF>;  ///< 3D point
 
     // types for simd
-    static constexpr TI       simd_size                 = xsimd::simd_traits<TF>::size;
-    using                     VF                        = std::vector<double,xsimd::aligned_allocator<double,XSIMD_DEFAULT_ALIGNMENT>>;
-    using                     BF                        = xsimd::batch<TF,simd_size>;
     using                     AF                        = std::array<TF,64>;
     using                     AC                        = std::array<CI,64>;
     using                     AB                        = std::bitset<64>;
