@@ -1,6 +1,6 @@
 #include "get_der_integrals_wrt_weights.h"
 #include "OptimalTransportSolver.h"
-// #include "traversal_cgal.h"
+#include "traversal_cgal.h"
 #include "get_integrals.h"
 // #include "AmgclSolver.h"
 #include "EigenSolver.h"
@@ -78,13 +78,9 @@ void OptimalTransportSolver<Grid, Bounds>::solve( const Pt *positions, TF *weigh
         es.solve( dw, m_offsets, m_columns, m_values, v_values );
         timings_solve.push_back( Tick::elapsed_since( t0 ) );
 
-        //        VtkOutput<1> vtk_output( { "weight" } );
-        //        display( vtk_output, positions, weights, nb_diracs );
-        //        vtk_output.save( "vtk/pd.vtk" );
-
-        //        t0 = Tick::get_time();
-        //        traversal_cgal( reinterpret_cast<const TF *>( positions ), weights, nb_diracs );
-        //        timings_cgal.push_back( Tick::elapsed_since( t0 ) );
+        t0 = Tick::get_time();
+        traversal_cgal( reinterpret_cast<const TF *>( positions ), weights, nb_diracs );
+        timings_cgal.push_back( Tick::elapsed_since( t0 ) );
 
         TF mdw = 0;
         for( std::size_t i = 0; i < nb_diracs; ++i ) {
