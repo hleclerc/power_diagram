@@ -9,14 +9,11 @@ namespace Visitor {
 
 /**
   Pc is expected to contain
-  - static int nb_bits_per_axis
   - static int dim
   - allow_ball_cut
   - TF => floating point type
   - TI => index type
 
-  Comments:
-  -
 */
 template<class Pc>
 class ZGrid {
@@ -29,6 +26,7 @@ public:
     using                   TI                    = typename Pc::TI;
 
     // static definitions
+    static constexpr bool   full_may_cut_test     = false;
     static constexpr int    sizeof_zcoords        = ( dim * nb_bits_per_axis + 7 ) / 8; ///< nb meaningful bytes in z-coordinates
     using                   CP2                   = ConvexPolyhedron2<Pc,TI>;
     using                   CP3                   = ConvexPolyhedron3<Pc,TI>;
@@ -85,9 +83,10 @@ private:
     void                    update_the_limits      ( const Pt *positions, const TF *weights, std::size_t nb_diracs );
     void                    update_neighbors       ( TI num_grid );
     void                    fill_the_grids         ( const Pt *positions, const TF *weights, std::size_t nb_diracs );
+    TF                      min_w_to_cut           ( const CP &lc, Pt c0, TF w0, const Cell &cr_cell, const Pt *positions, const TF *weights );
     template<class C> TZ    zcoords_for            ( const C &pos ); ///< floating point position
     template<int d>   TZ    ng_zcoord              ( TZ zcoords, TZ off, N<d> ) const;
-    bool                    may_cut                ( const CP &lc, TI i0, const Grid &cr_grid, const Cell &cr_cell, const Pt *positions, const TF *weights ) __attribute__((noinline));
+    bool                    may_cut                ( const CP &lc, TI i0, const Grid &cr_grid, const Cell &cr_cell, const Pt *positions, const TF *weights );
 
     // true if a dirac in b1 (given max_weight in b1 and its neighbors) may cut lc
 

@@ -26,6 +26,37 @@ void ZGrid<Pc>::update( const Pt *positions, const TF *weights, std::size_t nb_d
 }
 
 template<class Pc>
+typename ZGrid<Pc>::TF ZGrid<Pc>::min_w_to_cut( const CP &lc, const Pt c0, const TF w0, const Cell &cr_cell, const Pt *positions, const TF *weights ) {
+    using std::sqrt;
+    using std::pow;
+    using std::max;
+    using std::min;
+
+    //
+    if ( allow_ball_cut && ball_cut ) {
+        TODO;
+    }
+
+    //
+    const Pt cc = cr_cell.pos + TF( 0.5 ) * cr_cell.size;
+    const TF sc = sqrt( TF( 0.5 ) ) * cr_cell.size;
+    TF res = std::numeric_limits<TF>::max();
+    if ( dim == 2 ) {
+        for( TI num_lc_point = 0; num_lc_point < lc.nb_points; ++num_lc_point ) {
+            TF nc = pow( lc.points[ 0 ][ num_lc_point ] - cc[ 0 ], 2 ) + pow( lc.points[ 1 ][ num_lc_point ] - cc[ 1 ], 2 );
+            TF n0 = pow( lc.points[ 0 ][ num_lc_point ] - c0[ 0 ], 2 ) + pow( lc.points[ 1 ][ num_lc_point ] - c0[ 1 ], 2 );
+            res = min( res, pow( max( sqrt( nc ) - sc, TF( 0 ) ), 2 ) - n0 );
+        }
+    } else {
+        for( TI num_lc_point = 0; num_lc_point < lc.nb_points; ++num_lc_point ) {
+            Pt p = lc.point( num_lc_point );
+            res = min( res, pow( max( norm_2( p - cc ) - sc, TF( 0 ) ), 2 ) - norm_2_p2( p - c0 ) );
+        }
+    }
+    return res + w0;
+}
+
+template<class Pc>
 bool ZGrid<Pc>::may_cut( const CP &lc, TI i0, const Grid &cr_grid, const Cell &cr_cell, const Pt *positions, const TF *weights ) {
     using std::sqrt;
     using std::max;
@@ -37,7 +68,7 @@ bool ZGrid<Pc>::may_cut( const CP &lc, TI i0, const Grid &cr_grid, const Cell &c
     auto w0 = weights[ i0 ];
 
     //
-    if ( ball_cut ) {
+    if ( allow_ball_cut && ball_cut ) {
         TF md = 0; // min dist pow 2
         for( size_t d = 0; d < dim; ++d ) {
             TF o = c0[ d ] - cr_cell.pos[ d ];
@@ -50,80 +81,91 @@ bool ZGrid<Pc>::may_cut( const CP &lc, TI i0, const Grid &cr_grid, const Cell &c
     }
 
     //
-    const Pt A{ cr_cell.pos.x               , cr_cell.pos.y                };
-    const Pt B{ cr_cell.pos.x + cr_cell.size, cr_cell.pos.y                };
-    const Pt C{ cr_cell.pos.x               , cr_cell.pos.y + cr_cell.size };
-    const Pt D{ cr_cell.pos.x + cr_cell.size, cr_cell.pos.y + cr_cell.size };
+    if ( full_may_cut_test ) {
+        const Pt A{ cr_cell.pos.x               , cr_cell.pos.y                };
+        const Pt B{ cr_cell.pos.x + cr_cell.size, cr_cell.pos.y                };
+        const Pt C{ cr_cell.pos.x               , cr_cell.pos.y + cr_cell.size };
+        const Pt D{ cr_cell.pos.x + cr_cell.size, cr_cell.pos.y + cr_cell.size };
 
-    // p = center. l = first point of the segment, d = segment direction. s = size of the segment
-    auto inter_disc_segment = [&]( Pt p, TF r2, Pt l, int d, TF min_s, TF max_s ) {
-        Pt q = p - l;
-        TF c = norm_2_p2( q ) - r2;
-        TF e = q[ d ] * q[ d ] - c;
-        if ( e <= 0 )
-            return false;
-        e = sqrt( e );
+        // p = center. l = first point of the segment, d = segment direction. s = size of the segment
+        auto inter_disc_segment = [&]( Pt p, TF r2, Pt l, int d, TF min_s, TF max_s ) {
+            Pt q = p - l;
+            TF c = norm_2_p2( q ) - r2;
+            TF e = q[ d ] * q[ d ] - c;
+            if ( e <= 0 )
+                return false;
+            e = sqrt( e );
 
-        TF s0 = q[ d ] + e;
-        TF s1 = q[ d ] - e;
-        return ( s0 >= min_s && s0 <= max_s ) || ( s1 >= min_s && s1 <= max_s );
-    };
+            TF s0 = q[ d ] + e;
+            TF s1 = q[ d ] - e;
+            return ( s0 >= min_s && s0 <= max_s ) || ( s1 >= min_s && s1 <= max_s );
+        };
 
-    // l = first point of the segment. d = direction of the segment. s = size of the segment
-    auto test_one_line = [&]( Pt p, TF r2, Pt l0, Pt l1, int d, TF s, TF d_eps ) {
-        return norm_2_p2( l0 - p ) < r2 + d_eps * d_eps ||
-               norm_2_p2( l1 - p ) < r2 + d_eps * d_eps ||
-               inter_disc_segment( p, r2, l0, d, 0 - d_eps, s + d_eps );
-    };
+        // l = first point of the segment. d = direction of the segment. s = size of the segment
+        auto test_one_line = [&]( Pt p, TF r2, Pt l0, Pt l1, int d, TF s, TF d_eps ) {
+            return norm_2_p2( l0 - p ) < r2 + d_eps * d_eps ||
+                    norm_2_p2( l1 - p ) < r2 + d_eps * d_eps ||
+                    inter_disc_segment( p, r2, l0, d, 0 - d_eps, s + d_eps );
+        };
 
-    // l = common point of the segments. sx = signed sizes of the segments for for the x direction
-    auto test_two_lines = [&]( Pt p, TF r2, Pt lm, Pt lx, Pt ly, TF min_x, TF max_x, TF min_y, TF max_y, TF d_eps ) {
-        return norm_2_p2( lx - p ) < r2 + d_eps * d_eps ||
-               norm_2_p2( ly - p ) < r2 + d_eps * d_eps ||
-               inter_disc_segment( p, r2, lm, 0, min_x, max_x ) ||
-               inter_disc_segment( p, r2, lm, 1, min_y, max_y ) ;
-    };
+        // l = common point of the segments. sx = signed sizes of the segments for for the x direction
+        auto test_two_lines = [&]( Pt p, TF r2, Pt lm, Pt lx, Pt ly, TF min_x, TF max_x, TF min_y, TF max_y, TF d_eps ) {
+            return norm_2_p2( lx - p ) < r2 + d_eps * d_eps ||
+                    norm_2_p2( ly - p ) < r2 + d_eps * d_eps ||
+                    inter_disc_segment( p, r2, lm, 0, min_x, max_x ) ||
+                    inter_disc_segment( p, r2, lm, 1, min_y, max_y ) ;
+        };
 
-    //
-    const TF d_eps = 10 * std::numeric_limits<TF>::epsilon() * cr_cell.size;
-    for( std::size_t num_lc_point = 0; num_lc_point < lc.nb_points; ++num_lc_point ) {
-        Pt p = lc.point( num_lc_point );
-        TF r2 = norm_2_p2( p - c0 ) + cr_grid.max_weight - w0;
-        if ( r2 <= 0 )
-            continue;
+        //
+        const TF d_eps = 10 * std::numeric_limits<TF>::epsilon() * cr_cell.size;
+        for( std::size_t num_lc_point = 0; num_lc_point < lc.nb_points; ++num_lc_point ) {
+            Pt p = lc.point( num_lc_point );
+            TF r2 = norm_2_p2( p - c0 ) + cr_grid.max_weight - w0;
+            if ( r2 <= 0 )
+                continue;
 
-        if ( p.x < A.x - d_eps ) {
-            if ( p.y < A.y ) {
-                if ( test_two_lines( p, r2, A, B, C, - d_eps, cr_cell.size + d_eps, - d_eps, cr_cell.size + d_eps, d_eps ) )
+            if ( p.x < A.x - d_eps ) {
+                if ( p.y < A.y ) {
+                    if ( test_two_lines( p, r2, A, B, C, - d_eps, cr_cell.size + d_eps, - d_eps, cr_cell.size + d_eps, d_eps ) )
+                        return true;
+                } else if ( p.y < C.y ) {
+                    if ( test_one_line( p, r2, A, C, 1, cr_cell.size, d_eps ) )
+                        return true;
+                } else {
+                    if ( test_two_lines( p, r2, C, D, A, - d_eps, cr_cell.size + d_eps, - cr_cell.size - d_eps, d_eps, d_eps ) )
+                        return true;
+                }
+            } else if ( p.x < B.x + d_eps ) {
+                if ( p.y < A.y - d_eps ) {
+                    if ( test_one_line( p, r2, A, B, 0, cr_cell.size, d_eps ) )
+                        return true;
+                } else if ( p.y < C.y + d_eps ) {
                     return true;
-            } else if ( p.y < C.y ) {
-                if ( test_one_line( p, r2, A, C, 1, cr_cell.size, d_eps ) )
-                    return true;
+                } else {
+                    if ( test_one_line( p, r2, C, D, 0, cr_cell.size, d_eps ) )
+                        return true;
+                }
             } else {
-                if ( test_two_lines( p, r2, C, D, A, - d_eps, cr_cell.size + d_eps, - cr_cell.size - d_eps, d_eps, d_eps ) )
-                    return true;
+                if ( p.y < A.y ) {
+                    if ( test_two_lines( p, r2, B, A, D, - cr_cell.size - d_eps, d_eps, - d_eps, cr_cell.size + d_eps, d_eps ) )
+                        return true;
+                } else if ( p.y < C.y ) {
+                    if ( test_one_line( p, r2, B, D, 1, cr_cell.size, d_eps ) )
+                        return true;
+                } else {
+                    if ( test_two_lines( p, r2, D, C, B, - cr_cell.size - d_eps, d_eps, - cr_cell.size - d_eps, d_eps, d_eps ) )
+                        return true;
+                }
             }
-        } else if ( p.x < B.x + d_eps ) {
-            if ( p.y < A.y - d_eps ) {
-                if ( test_one_line( p, r2, A, B, 0, cr_cell.size, d_eps ) )
-                    return true;
-            } else if ( p.y < C.y + d_eps ) {
+        }
+    } else {
+        const Pt C = cr_cell.pos + TF( 0.5 ) * cr_cell.size;
+        const TF s = sqrt( TF( 0.5 ) ) * cr_cell.size;
+        for( TI num_lc_point = 0; num_lc_point < lc.nb_points; ++num_lc_point ) {
+            Pt p = lc.point( num_lc_point );
+            TF r2 = norm_2_p2( p - c0 ) + cr_grid.max_weight - w0;
+            if ( r2 > 0 && norm_2( p - C ) < sqrt( r2 ) + s )
                 return true;
-            } else {
-                if ( test_one_line( p, r2, C, D, 0, cr_cell.size, d_eps ) )
-                    return true;
-            }
-        } else {
-            if ( p.y < A.y ) {
-                if ( test_two_lines( p, r2, B, A, D, - cr_cell.size - d_eps, d_eps, - d_eps, cr_cell.size + d_eps, d_eps ) )
-                    return true;
-            } else if ( p.y < C.y ) {
-                if ( test_one_line( p, r2, B, D, 1, cr_cell.size, d_eps ) )
-                    return true;
-            } else {
-                if ( test_two_lines( p, r2, D, C, B, - cr_cell.size - d_eps, d_eps, - cr_cell.size - d_eps, d_eps, d_eps ) )
-                    return true;
-            }
         }
     }
 
@@ -157,12 +199,12 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
     //    };
     //    static Ratio ratio;
 
-    auto plane_cut = [&]( CP &lc, TI i0, TI i1, TI num_grid ) {
-        Pt V = positions[ i1 ] - positions[ i0 ];
+    auto plane_cut = [&]( CP &lc, Pt c0, TF w0, TI i1 ) {
+        Pt V = positions[ i1 ] - c0;
         TF n = norm_2_p2( V );
-        TF x = TF( 0.5 ) + TF( 0.5 ) * ( weights[ i0 ] - weights[ i1 ] ) / n;
+        TF x = TF( 0.5 ) + TF( 0.5 ) * ( w0 - weights[ i1 ] ) / n;
         //        TF i = TF( 1 ) / sqrt( n );
-        lc.plane_cut( positions[ i0 ] + x * V, /*i * */V, i1, N<0>() );
+        lc.plane_cut( c0 + x * V, /*i * */V, i1, N<0>() );
         // ratio( cut );
     };
 
@@ -186,29 +228,20 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
             Front front( op_counts[ num_thread ], visited[ num_thread ] );
             CP lc;
 
-            std::vector<TI> sorted_diracs_indices;
-
             TI beg_cell = ( num_job + 0 ) * ( grid.cells.size() - 1 ) / nb_jobs;
             TI end_cell = ( num_job + 1 ) * ( grid.cells.size() - 1 ) / nb_jobs;
             for( TI num_cell = beg_cell; num_cell < end_cell && err == 0; ++num_cell ) {
                 const Cell &cell = grid.cells[ num_cell ];
                 for( TI num_dirac : Span<TI>{ grid.dpc_values.data() + cell.dpc_offset, grid.dpc_values.data() + grid.cells[ num_cell + 1 ].dpc_offset } ) {
+                    const Pt c0 = positions[ num_dirac ];
+                    const TF w0 = weights[ num_dirac ];
+
                     // start of lc: cut with nodes in the same cell
                     lc = starting_lc;
 
                     for( TI num_cr_dirac : Span<TI>{ grid.dpc_values.data() + cell.dpc_offset, grid.dpc_values.data() + grid.cells[ num_cell + 1 ].dpc_offset } )
                         if ( num_cr_dirac != num_dirac )
-                            plane_cut( lc, num_dirac, num_cr_dirac, num_grid );
-
-                    //                                        sorted_diracs_indices = { grid.dpc_values.data() + cell.dpc_offset, grid.dpc_values.data() + grid.cells[ num_cell + 1 ].dpc_offset };
-                    //                                        std::sort( sorted_diracs_indices.begin(), sorted_diracs_indices.end(), [&]( TI ia, TI ib ) {
-                    //                                            TF da = norm_2_p2( positions[ ia ] - positions[ num_dirac ] );
-                    //                                            TF db = norm_2_p2( positions[ ib ] - positions[ num_dirac ] );
-                    //                                            return da < db;
-                    //                                        } );
-                    //                                        for( TI num_cr_dirac : sorted_diracs_indices )
-                    //                                            if ( num_cr_dirac != num_dirac )
-                    //                                                plane_cut( lc, num_dirac, num_cr_dirac, num_grid );
+                            plane_cut( lc, c0, w0, num_cr_dirac );
 
                     // front
                     front.init( grids, num_grid, num_cell, positions[ num_dirac ], weights[ num_dirac ] );
@@ -226,7 +259,7 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
                             // cut with items in pa cell
                             front.set_visited( grids, num_pa_grid, num_pa_cell );
                             for( TI num_pa_dirac : Span<TI>{ pa_grid.dpc_values.data() + pa_grid.cells[ num_pa_cell + 0 ].dpc_offset, pa_grid.dpc_values.data() + pa_grid.cells[ num_pa_cell + 1 ].dpc_offset } )
-                                plane_cut( lc, num_dirac, num_pa_dirac, num_pa_grid );
+                                plane_cut( lc, c0, w0, num_pa_dirac );
 
                             // add neighbors in the front
                             for( TI num_ng_cell : Span<TI>{ pa_grid.ng_indices.data() + pa_grid.ng_offsets[ num_pa_cell + 0 ], pa_grid.ng_indices.data() + pa_grid.ng_offsets[ num_pa_cell + 1 ] } )
@@ -242,12 +275,14 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
                         const Cell &cr_cell = cr_grid.cells[ cr.num_cell ];
 
                         // if no cut is possible, we don't go further.
-                        if ( may_cut( lc, num_dirac, cr_grid, cr_cell, positions, weights ) == false )
+                        TF min_w = min_w_to_cut( lc, c0, w0, cr_cell, positions, weights );
+                        if ( cr_grid.max_weight <= min_w )
                             continue;
 
-                        // if we have diracs in cr, do the cuts
+                        // if we have diracs in cr that may cut, try them
                         for( TI num_cr_dirac : Span<TI>{ cr_grid.dpc_values.data() + cr_cell.dpc_offset, cr_grid.dpc_values.data() + cr_grid.cells[ cr.num_cell + 1 ].dpc_offset } )
-                            plane_cut( lc, num_dirac, num_cr_dirac, cr.num_grid );
+                            if ( weights[ num_cr_dirac ] > min_w )
+                                plane_cut( lc, c0, w0, num_cr_dirac );
 
                         // update the front
                         for( TI num_ng_cell : Span<TI>{ cr_grid.ng_indices.data() + cr_grid.ng_offsets[ cr.num_cell + 0 ], cr_grid.ng_indices.data() + cr_grid.ng_offsets[ cr.num_cell + 1 ] } )
@@ -619,8 +654,9 @@ void ZGrid<Pc>::fill_the_grids( const Pt *positions, const TF *weights, std::siz
                 grids[ num_grid ].dirac_indices.push_back( num_dirac );
             }
         } else {
+            const TF s = grids.size() / ( max_weight - min_weight ) * ( 1 - std::numeric_limits<TF>::epsilon() );
             for( std::size_t num_dirac = 0; num_dirac < nb_diracs; ++num_dirac ) {
-                int num_grid = ( weights[ num_dirac ] - min_weight ) / max_delta_weight_per_grid;
+                int num_grid = s * ( weights[ num_dirac ] - min_weight );
                 grids[ num_grid ].dirac_indices.push_back( num_dirac );
             }
         }
