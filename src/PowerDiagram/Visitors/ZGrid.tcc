@@ -404,7 +404,6 @@ void ZGrid<Pc>::update_the_limits( const Pt *positions, const TF *weights, std::
         //
         TI nb_grids = 1 + floor( ( max_weight - min_weight ) / max_delta_weight_per_grid );
         grids.resize( nb_grids );
-        P( nb_grids );
 
         //
         if ( eq_rep_weight_split ) {
@@ -423,7 +422,7 @@ void ZGrid<Pc>::update_the_limits( const Pt *positions, const TF *weights, std::
                 for( ; old_off < off; ++old_off )
                     num_grid_vs_weight[ old_off ] = num_grid;
             }
-        }
+         }
     }
 
     // grid size
