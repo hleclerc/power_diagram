@@ -48,7 +48,7 @@ ConvexPolyhedron2<Pc,CI>::ConvexPolyhedron2( const ConvexPolyhedron2 &that ) {
     for( size_t i = 0; i < nb_points; ++i ) points[ 1 ][ i ] = that.points[ 1 ][ i ];
     for( size_t i = 0; i < nb_points; ++i ) cut_ids[ i ] = that.cut_ids[ i ];
 
-    if ( allow_ball_cut ) {
+    if ( store_the_normals ) {
         for( size_t i = 0; i < nb_points; ++i ) normals[ 0 ][ i ] = that.normals[ 0 ][ i ];
         for( size_t i = 0; i < nb_points; ++i ) normals[ 1 ][ i ] = that.normals[ 1 ][ i ];
         for( size_t i = 0; i < nb_points; ++i ) arcs.set( i, that.arcs[ i ] );
@@ -82,7 +82,7 @@ void ConvexPolyhedron2<Pc,CI>::write_to_stream( std::ostream &os ) const {
     for( std::size_t i = 0; i < nb_points; ++i )
         os << ( i ? "," : "" ) << "(" << point( i ) << ")";
     os << "]";
-    if ( allow_ball_cut ) {
+    if ( store_the_normals ) {
         os << " nrms: [";
         for( std::size_t i = 0; i < nb_points; ++i )
             os << ( i ? "," : "" ) << "(" << normal( i ) << ")";
@@ -314,7 +314,7 @@ bool ConvexPolyhedron2<Pc,CI>::plane_cut( Pt origin, Pt normal, CI cut_id, N<no>
             points [ 0 ][ i ] = points [ 0 ][ i - 1 ];
             points [ 1 ][ i ] = points [ 1 ][ i - 1 ];
             cut_ids     [ i ] = cut_ids     [ i - 1 ];
-            if ( allow_ball_cut ) {
+            if ( store_the_normals ) {
                 normals[ 0 ][ i ] = normals[ 0 ][ i - 1 ];
                 normals[ 1 ][ i ] = normals[ 1 ][ i - 1 ];
             }
@@ -327,7 +327,7 @@ bool ConvexPolyhedron2<Pc,CI>::plane_cut( Pt origin, Pt normal, CI cut_id, N<no>
         points[ 0 ][ i1 + 1 ] = p2.x - m1 * ( p1.x - p2.x );
         points[ 1 ][ i1 + 1 ] = p2.y - m1 * ( p1.y - p2.y );
         cut_ids    [ i1 + 1 ] = cut_ids[ i1 + 0 ];
-        if ( allow_ball_cut ) {
+        if ( store_the_normals ) {
             normals[ 0 ][ i1 + 1 ] = normals[ 0 ][ i1 + 0 ];
             normals[ 1 ][ i1 + 1 ] = normals[ 1 ][ i1 + 0 ];
         }
@@ -335,7 +335,7 @@ bool ConvexPolyhedron2<Pc,CI>::plane_cut( Pt origin, Pt normal, CI cut_id, N<no>
         points[ 0 ][ i1 + 0 ] = p0.x - m0 * ( p1.x - p0.x );
         points[ 1 ][ i1 + 0 ] = p0.y - m0 * ( p1.y - p0.y );
         cut_ids    [ i1 + 0 ] = cut_id;
-        if ( allow_ball_cut ) {
+        if ( store_the_normals ) {
             normals[ 0 ][ i1 + 0 ] = normal[ 0 ];
             normals[ 1 ][ i1 + 0 ] = normal[ 1 ];
         }
@@ -366,7 +366,7 @@ bool ConvexPolyhedron2<Pc,CI>::plane_cut( Pt origin, Pt normal, CI cut_id, N<no>
         points[ 0 ][ i1 ] = p0.x - m1 * ( p1.x - p0.x );
         points[ 1 ][ i1 ] = p0.y - m1 * ( p1.y - p0.y );
         cut_ids    [ i1 ] = cut_id;
-        if ( allow_ball_cut ) {
+        if ( store_the_normals ) {
             normals[ 0 ][ i1 ] = normal[ 0 ];
             normals[ 1 ][ i1 ] = normal[ 1 ];
         }
@@ -401,7 +401,7 @@ bool ConvexPolyhedron2<Pc,CI>::plane_cut( Pt origin, Pt normal, CI cut_id, N<no>
         points[ 0 ][ 0 ] = p3.x - m2 * ( p2.x - p3.x );
         points[ 1 ][ 0 ] = p3.y - m2 * ( p2.y - p3.y );
         cut_ids    [ 0 ] = cut_ids[ i2 ];
-        if ( allow_ball_cut ) {
+        if ( store_the_normals ) {
             normals[ 0 ][ 0 ] = normals[ 0 ][ i2 ];
             normals[ 1 ][ 0 ] = normals[ 1 ][ i2 ];
         }
@@ -410,7 +410,7 @@ bool ConvexPolyhedron2<Pc,CI>::plane_cut( Pt origin, Pt normal, CI cut_id, N<no>
             points[ 0 ][ o ] = points[ 0 ][ i2 + o ];
             points[ 1 ][ o ] = points[ 1 ][ i2 + o ];
             cut_ids    [ o ] = cut_ids    [ i2 + o ];
-            if ( allow_ball_cut ) {
+            if ( store_the_normals ) {
                 normals[ 0 ][ o ] = normals[ 0 ][ i2 + o ];
                 normals[ 1 ][ o ] = normals[ 1 ][ i2 + o ];
             }
@@ -418,7 +418,7 @@ bool ConvexPolyhedron2<Pc,CI>::plane_cut( Pt origin, Pt normal, CI cut_id, N<no>
         points[ 0 ][ o ] = p0.x - m1 * ( p1.x - p0.x );
         points[ 1 ][ o ] = p0.y - m1 * ( p1.y - p0.y );
         cut_ids    [ o ] = cut_id;
-        if ( allow_ball_cut ) {
+        if ( store_the_normals ) {
             normals[ 0 ][ o ] = normal[ 0 ];
             normals[ 1 ][ o ] = normal[ 1 ];
         }
@@ -447,7 +447,7 @@ bool ConvexPolyhedron2<Pc,CI>::plane_cut( Pt origin, Pt normal, CI cut_id, N<no>
     points[ 0 ][ i1 + 0 ] = p0.x - m1 * ( p1.x - p0.x );
     points[ 1 ][ i1 + 0 ] = p0.y - m1 * ( p1.y - p0.y );
     cut_ids    [ i1 + 0 ] = cut_id;
-    if ( allow_ball_cut ) {
+    if ( store_the_normals ) {
         normals[ 0 ][ i1 + 0 ] = normal[ 0 ];
         normals[ 1 ][ i1 + 0 ] = normal[ 1 ];
     }
@@ -455,7 +455,7 @@ bool ConvexPolyhedron2<Pc,CI>::plane_cut( Pt origin, Pt normal, CI cut_id, N<no>
     points[ 0 ][ i1 + 1 ] = p3.x - m2 * ( p2.x - p3.x );
     points[ 1 ][ i1 + 1 ] = p3.y - m2 * ( p2.y - p3.y );
     cut_ids    [ i1 + 1 ] = cut_ids[ i2 ];
-    if ( allow_ball_cut ) {
+    if ( store_the_normals ) {
         normals[ 0 ][ i1 + 1 ] = normals[ 0 ][ i2 ];
         normals[ 1 ][ i1 + 1 ] = normals[ 1 ][ i2 ];
     }
@@ -465,7 +465,7 @@ bool ConvexPolyhedron2<Pc,CI>::plane_cut( Pt origin, Pt normal, CI cut_id, N<no>
         points[ 0 ][ i - nb_to_rem ] = points[ 0 ][ i ];
         points[ 1 ][ i - nb_to_rem ] = points[ 1 ][ i ];
         cut_ids    [ i - nb_to_rem ] = cut_ids    [ i ];
-        if ( allow_ball_cut ) {
+        if ( store_the_normals ) {
             normals[ 0 ][ i - nb_to_rem ] = normals[ 0 ][ i ];
             normals[ 1 ][ i - nb_to_rem ] = normals[ 1 ][ i ];
         }
@@ -561,6 +561,14 @@ bool ConvexPolyhedron2<Pc,CI>::is_a_cutting_plane( Pt origin, Pt normal ) const 
     //            return true;
     //    }
     return false;
+}
+
+template<class Pc, class CI>
+bool ConvexPolyhedron2<Pc,CI>::contains( const Pt &pos ) const {
+    for( TI i = 0; i < nb_points; ++i )
+        if ( dot( pos - point( i ), normal( i ) ) > 0 )
+            return false;
+    return true;
 }
 
 template<class Pc,class CI>

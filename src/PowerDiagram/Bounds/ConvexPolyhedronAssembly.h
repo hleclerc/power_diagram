@@ -22,6 +22,7 @@ public:
     using                  Pt                         = typename CP::Pt;
 
     // modifications
+    void                   add_convex_polyhedron      ( const std::vector<Pt> &positions, const std::vector<Pt> &normals, TF coeff = 1.0, TI cut_id = -1 );
     void                   add_box                    ( Pt p0, Pt p1, TF coeff = 1.0, TI cut_id = -1 );
 
     // info
@@ -29,6 +30,8 @@ public:
     template<class F> void for_each_intersection      ( CP &cp, const F &f ) const; ///< f( ConvexPolyhedron, SpaceFunction )
     template<class V> void display_boundaries         ( V &vtk_output ) const;
     template<class V> void display_coeffs             ( V &vtk_output ) const;
+
+    TF                     coeff_at                   ( const Pt &pos ) const;
 
     //
 private:

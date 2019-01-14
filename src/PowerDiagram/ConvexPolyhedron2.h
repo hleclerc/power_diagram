@@ -27,6 +27,9 @@ public:
     using                     TF                        = typename Pc::TF; ///< index type
     using                     Pt                        = Point2<TF>;  ///< 3D point
 
+    //
+    static constexpr bool     store_the_normals         = true;
+
     // types for simd
     using                     AF                        = std::array<TF,64>;
     using                     AC                        = std::array<CI,64>;
@@ -42,13 +45,14 @@ public:
     /**/                      ConvexPolyhedron2         ( const ConvexPolyhedron2 &that );
     /**/                      ConvexPolyhedron2         ();
 
-    // information
+    // traversal
     void                      for_each_boundary_measure ( FunctionEnum::Unit, const std::function<void( TF boundary_measure, CI id )> &f ) const;
     void                      for_each_approx_seg       ( const std::function<void( Pt )> &f, TF max_ratio_area_error = 1e-1 ) const; ///<
     void                      for_each_simplex          ( const std::function<void( CI num_0, CI num_1 )> &f ) const;
     void                      for_each_bound            ( const std::function<void( Pt p0, Pt p1, CI id )> &f ) const;
     void                      for_each_node             ( const std::function<void( Pt v )> &f ) const;
 
+    // information
     void                      write_to_stream           ( std::ostream &os ) const;
     template<class V> void    display                   ( V &vo, const typename V::CV &cell_data = {}, bool filled = true, TF max_ratio_area_error = 1e-1, bool display_tangents = false ) const;
     Pt                        normal                    ( std::size_t n ) const { return { normals[ 0 ][ n ], normals[ 1 ][ n ] }; }
@@ -64,6 +68,7 @@ public:
 
     // tests
     bool                      is_a_cutting_plane        ( Pt origin, Pt normal ) const;
+    bool                      contains                  ( const Pt &pos ) const;
 
     // computations
     void                      add_centroid_contrib      ( Pt &ctd, TF &vol, FunctionEnum::Gaussian ) const;
