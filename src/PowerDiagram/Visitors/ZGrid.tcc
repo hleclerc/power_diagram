@@ -18,7 +18,15 @@ ZGrid<Pc>::ZGrid( std::size_t max_diracs_per_cell, TF max_delta_weight_per_grid 
 }
 
 template<class Pc>
-void ZGrid<Pc>::update( const Pt *positions, const TF *weights, std::size_t nb_diracs, bool positions_have_changed, bool weights_have_changed ) {
+void ZGrid<Pc>::update( const Pt *positions, const TF *weights, std::size_t nb_diracs, bool positions_have_changed, bool weights_have_changed, bool ball_cut ) {
+    if ( ball_cut )
+        update( positions, weights, nb_diracs, positions_have_changed, weights_have_changed, N<1>() );
+    else
+        update( positions, weights, nb_diracs, positions_have_changed, weights_have_changed, N<0>() );
+}
+
+template<class Pc> template<int bc>
+void ZGrid<Pc>::update( const Pt *positions, const TF *weights, std::size_t nb_diracs, bool positions_have_changed, bool weights_have_changed, N<bc> ball_cut ) {
     if ( positions_have_changed || weights_have_changed ) {
         update_the_limits( positions, weights, nb_diracs );
         fill_the_grids   ( positions, weights, nb_diracs );

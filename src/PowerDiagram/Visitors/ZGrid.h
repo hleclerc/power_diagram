@@ -37,7 +37,9 @@ public:
     // methods
     /* ctor */              ZGrid                 ( std::size_t max_diracs_per_cell = 11, TF max_delta_weight_per_grid = 1e40 );
 
-    void                    update                ( const Pt *positions, const TF *weights, std::size_t nb_diracs, bool positions_have_changed = true, bool weights_have_changed = true );
+    template<int bc> void   update                ( const Pt *positions, const TF *weights, std::size_t nb_diracs, bool positions_have_changed, bool weights_have_changed, N<bc> ball_cut );
+    void                    update                ( const Pt *positions, const TF *weights, std::size_t nb_diracs, bool positions_have_changed = true, bool weights_have_changed = true, bool ball_cut = false );
+
     int                     for_each_laguerre_cell( const std::function<void( CP &lc, std::size_t num )> &f, const CP &starting_lc, const Pt *positions, const TF *weights, std::size_t nb_diracs, bool stop_if_void_lc = false ); ///< starting_lc can be a polygonal bound
     int                     for_each_laguerre_cell( const std::function<void( CP &lc, std::size_t num, int num_thread )> &f, const CP &starting_lc, const Pt *positions, const TF *weights, std::size_t nb_diracs, bool stop_if_void_lc = false ); ///< version with num_thread
 

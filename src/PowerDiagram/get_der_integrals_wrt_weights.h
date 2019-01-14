@@ -12,7 +12,7 @@ namespace PowerDiagram {
    We assume that grid has already been initialized by diracs
 */
 template<class TI,class TF,class Grid,class Bounds,class Pt,class Func>
-int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &m_columns, std::vector<TF> &m_values, std::vector<TF> &v_values, Grid &grid, Bounds &bounds, const Pt *positions, const TF *weights, std::size_t nb_diracs, Func ) {
+int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &m_columns, std::vector<TF> &m_values, std::vector<TF> &v_values, Grid &grid, Bounds &bounds, const Pt *positions, const TF *weights, std::size_t nb_diracs, Func func ) {
     struct DataPerThread {
         DataPerThread( std::size_t approx_nb_diracs ) {
             row_items    .reserve( 64 );
@@ -32,8 +32,7 @@ int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &
     std::vector<std::pair<int,TI>> pos_in_loc_matrices( nb_diracs ); // num dirac => num_thread, num sub row
 
     v_values.resize( nb_diracs );
-    for( TF &v : v_values )
-        v = - TF( 1 ) / nb_diracs;
+    set_target_measure( v_values, positions, weights, nb_diracs, func );
 
     int err = grid.for_each_laguerre_cell( [&]( auto &lc, std::size_t num_dirac_0, int num_thread ) {
         DataPerThread &dpt = data_per_threads[ num_thread ];
