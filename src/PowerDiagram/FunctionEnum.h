@@ -29,5 +29,8 @@ void set_target_measure( TV &v_values, const Pt *positions, const TF *weights, T
         v = - TF( 1 );
 }
 
+//
+template<class T> N<0> need_ball_cut( T ) { return {}; }
+inline N<1> need_ball_cut( InBallW05 ) { return {}; }
 
 }

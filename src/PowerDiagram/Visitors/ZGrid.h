@@ -10,7 +10,6 @@ namespace Visitor {
 /**
   Pc is expected to contain
   - static int dim
-  - allow_ball_cut
   - TF => floating point type
   - TI => index type
 
@@ -20,7 +19,6 @@ class ZGrid {
 public:
     // data from Pc
     static constexpr int    nb_bits_per_axis      = Pc::nb_bits_per_axis;
-    static constexpr bool   allow_ball_cut        = Pc::allow_ball_cut;
     static constexpr int    dim                   = Pc::dim;
     using                   TF                    = typename Pc::TF;
     using                   TI                    = typename Pc::TI;
@@ -37,11 +35,12 @@ public:
     // methods
     /* ctor */              ZGrid                 ( std::size_t max_diracs_per_cell = 11, TF max_delta_weight_per_grid = 1e40 );
 
-    template<int bc> void   update                ( const Pt *positions, const TF *weights, std::size_t nb_diracs, bool positions_have_changed, bool weights_have_changed, N<bc> ball_cut );
     void                    update                ( const Pt *positions, const TF *weights, std::size_t nb_diracs, bool positions_have_changed = true, bool weights_have_changed = true, bool ball_cut = false );
+    template<int bc> void   update                ( const Pt *positions, const TF *weights, std::size_t nb_diracs, bool positions_have_changed, bool weights_have_changed, N<bc> ball_cut );
 
     int                     for_each_laguerre_cell( const std::function<void( CP &lc, std::size_t num )> &f, const CP &starting_lc, const Pt *positions, const TF *weights, std::size_t nb_diracs, bool stop_if_void_lc = false ); ///< starting_lc can be a polygonal bound
-    int                     for_each_laguerre_cell( const std::function<void( CP &lc, std::size_t num, int num_thread )> &f, const CP &starting_lc, const Pt *positions, const TF *weights, std::size_t nb_diracs, bool stop_if_void_lc = false ); ///< version with num_thread
+    int                     for_each_laguerre_cell( const std::function<void( CP &lc, std::size_t num, int num_thread )> &f, const CP &starting_lc, const Pt *positions, const TF *weights, std::size_t nb_diracs, bool stop_if_void_lc = false, bool ball_cut = false ); ///< version with num_thread
+    template<int bc> int    for_each_laguerre_cell( const std::function<void( CP &lc, std::size_t num, int num_thread )> &f, const CP &starting_lc, const Pt *positions, const TF *weights, std::size_t nb_diracs, bool stop_if_void_lc, N<bc> ball_cut ); ///< version with num_thread
 
     bool                    check_sanity          ( const Pt *positions ) const;
     std::size_t             nb_levels             () const { return grids.size(); }
@@ -51,7 +50,6 @@ public:
     TF                      max_delta_weight_per_grid;
     int                     max_diracs_per_cell;
     bool                    eq_rep_weight_split;
-    bool                    ball_cut;
 
 private:
     struct                  Cell {
@@ -86,10 +84,10 @@ private:
     void                    update_the_limits      ( const Pt *positions, const TF *weights, std::size_t nb_diracs );
     void                    update_neighbors       ( TI num_grid );
     void                    fill_the_grids         ( const Pt *positions, const TF *weights, std::size_t nb_diracs );
-    TF                      min_w_to_cut           ( const CP &lc, Pt c0, TF w0, const Cell &cr_cell, const Pt *positions, const TF *weights );
+    template<int bc> TF     min_w_to_cut           ( const CP &lc, Pt c0, TF w0, const Cell &cr_cell, const Pt *positions, const TF *weights, N<bc> );
     template<class C> TZ    zcoords_for            ( const C &pos ); ///< floating point position
     template<int d>   TZ    ng_zcoord              ( TZ zcoords, TZ off, N<d> ) const;
-    bool                    may_cut                ( const CP &lc, TI i0, const Grid &cr_grid, const Cell &cr_cell, const Pt *positions, const TF *weights );
+    //    bool              may_cut                ( const CP &lc, TI i0, const Grid &cr_grid, const Cell &cr_cell, const Pt *positions, const TF *weights );
 
     // true if a dirac in b1 (given max_weight in b1 and its neighbors) may cut lc
 
