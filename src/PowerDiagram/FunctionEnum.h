@@ -7,10 +7,10 @@
 */
 namespace FunctionEnum {
 
-struct InBallW05 { template<class PT,class TF> auto operator()( PT p, PT c, TF w ) const { return norm_2_p2( p - c ) <= w; } };
-struct Gaussian  { template<class PT,class TF> auto operator()( PT p, PT c, TF w ) const { using std::exp; return exp( - norm_2_p2( p - c ) ); } };
-struct Unit      { template<class PT,class TF> auto operator()( PT p, PT c, TF w ) const { return 1; } };
-struct R2        { template<class PT,class TF> auto operator()( PT p, PT c, TF w ) const { return norm_2_p2( p - c ); } };
+struct InBallW05 { template<class PT,class TF> auto operator()( PT p, PT c, TF w ) const { return norm_2_p2( p - c ) <= w; } const char *name() const { return "InBallW05"; } };
+struct Gaussian  { template<class PT,class TF> auto operator()( PT p, PT c, TF w ) const { using std::exp; return exp( - norm_2_p2( p - c ) ); } const char *name() const { return "Gaussian"; } };
+struct Unit      { template<class PT,class TF> auto operator()( PT p, PT c, TF w ) const { return 1; } const char *name() const { return "1"; } };
+struct R2        { template<class PT,class TF> auto operator()( PT p, PT c, TF w ) const { return norm_2_p2( p - c ); } const char *name() const { return "R2"; } };
 
 //
 template<class T> T    func_for_final_cp_integration( T t       ) { return t ; }
