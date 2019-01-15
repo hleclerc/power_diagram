@@ -40,13 +40,12 @@ typename ZGrid<Pc>::TF ZGrid<Pc>::min_w_to_cut( const CP &lc, const Pt c0, const
     using std::min;
 
     //
-    if ( ball_cut ) {
-        TODO;
-    }
-
-    //
     const Pt cc = cr_cell.pos + TF( 0.5 ) * cr_cell.size;
     const TF sc = sqrt( TF( 0.5 ) ) * cr_cell.size;
+    if ( ball_cut )
+        return pow( max( norm_2( cc - c0 ) - sc - sqrt( w0 ), TF( 0 ) ), 2 );
+
+    //
     TF res = std::numeric_limits<TF>::max();
     if ( dim == 2 ) {
         for( TI num_lc_point = 0; num_lc_point < lc.nb_points; ++num_lc_point ) {

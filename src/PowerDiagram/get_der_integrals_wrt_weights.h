@@ -77,7 +77,7 @@ int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &
             dpt.columns.push_back( dpt.row_items[ i ].first  );
             dpt.values .push_back( dpt.row_items[ i ].second );
         }
-    }, bounds.englobing_convex_polyhedron(), positions, weights, nb_diracs, true /*stop if void laguerre cell*/ );
+    }, bounds.englobing_convex_polyhedron(), positions, weights, nb_diracs, true /*stop if void laguerre cell*/, need_ball_cut( func ) );
     if ( err )
         return err;
 

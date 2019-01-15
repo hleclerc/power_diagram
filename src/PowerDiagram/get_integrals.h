@@ -11,13 +11,13 @@ namespace PowerDiagram {
 */
 template<class TF,class Grid,class Bounds,class Pt,class Func>
 void get_integrals( TF *res, Grid &grid, Bounds &bounds, const Pt *positions, const TF *weights, std::size_t nb_diracs, const Func &func ) {
-    grid.for_each_laguerre_cell( [&]( auto &lc, auto num_dirac ) {
+    grid.for_each_laguerre_cell( [&]( auto &lc, auto num_dirac, int ) {
         TF measure = 0;
         bounds.for_each_intersection( lc, [&]( auto &cp, SpaceFunctions::Constant<TF> space_func ) {
             measure += space_func.coeff * cp.measure( FunctionEnum::func_for_final_cp_integration( func ) );
         } );
         res[ num_dirac ] = measure;
-    }, bounds.englobing_convex_polyhedron(), positions, weights, nb_diracs );
+    }, bounds.englobing_convex_polyhedron(), positions, weights, nb_diracs, false, need_ball_cut( func ) );
 }
 
 template<class TF,class Grid,class Bounds,class Pt>
