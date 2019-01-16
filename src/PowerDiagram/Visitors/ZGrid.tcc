@@ -306,6 +306,8 @@ int ZGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::size
                     //
                     if ( ball_cut )
                         lc.ball_cut( positions[ num_dirac ], sqrt( weights[ num_dirac ] ), num_dirac );
+                    else
+                        lc.sphere_center = positions[ num_dirac ];
 
                     //
                     if ( stop_if_void_lc && lc.empty() ) {

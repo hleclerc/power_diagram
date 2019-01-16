@@ -4,6 +4,7 @@
 #include "system/ThreadPool.h"
 #include "system/Assert.h"
 #include "FunctionEnum.h"
+#include <algorithm>
 #include <vector>
 
 namespace PowerDiagram {
@@ -12,7 +13,7 @@ namespace PowerDiagram {
    We assume that grid has already been initialized by diracs
 */
 template<class TI,class TF,class Grid,class Bounds,class Pt,class Func>
-int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &m_columns, std::vector<TF> &m_values, std::vector<TF> &v_values, Grid &grid, Bounds &bounds, const Pt *positions, const TF *weights, std::size_t nb_diracs, Func func ) {
+int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &m_columns, std::vector<TF> &m_values, std::vector<TF> &v_values, Grid &grid, Bounds &bounds, const Pt *positions, const TF *weights, std::size_t nb_diracs, Func radial_func ) {
     struct DataPerThread {
         DataPerThread( std::size_t approx_nb_diracs ) {
             row_items    .reserve( 64 );
@@ -32,7 +33,13 @@ int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &
     std::vector<std::pair<int,TI>> pos_in_loc_matrices( nb_diracs ); // num dirac => num_thread, num sub row
 
     v_values.resize( nb_diracs );
-    set_target_measure( v_values, positions, weights, nb_diracs, func );
+    if ( radial_func.need_ball_cut() ) {
+        for( TF &v : v_values )
+            v = - TF( 1 );
+    } else {
+        for( TF &v : v_values )
+            v = - TF( 1 ) / nb_diracs;
+    }
 
     int err = grid.for_each_laguerre_cell( [&]( auto &lc, std::size_t num_dirac_0, int num_thread ) {
         DataPerThread &dpt = data_per_threads[ num_thread ];
@@ -45,7 +52,8 @@ int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &
         TF d0_weight = weights[ num_dirac_0 ];
         bounds.for_each_intersection( lc, [&]( auto &cp, SpaceFunctions::Constant<TF> space_func ) {
             TF coeff = 0.5 * space_func.coeff;
-            v_values[ num_dirac_0 ] += space_func.coeff * cp.measure();
+            v_values[ num_dirac_0 ] += space_func.coeff * cp.integration( radial_func.func_for_final_cp_integration(), d0_weight );
+            #warning ...
             cp.for_each_boundary_measure( FunctionEnum::Unit(), [&]( TF boundary_measure, TI num_dirac_1 ) {
                 if ( num_dirac_1 == TI( -1 ) )
                     return;
@@ -77,7 +85,7 @@ int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &
             dpt.columns.push_back( dpt.row_items[ i ].first  );
             dpt.values .push_back( dpt.row_items[ i ].second );
         }
-    }, bounds.englobing_convex_polyhedron(), positions, weights, nb_diracs, true /*stop if void laguerre cell*/, need_ball_cut( func ) );
+    }, bounds.englobing_convex_polyhedron(), positions, weights, nb_diracs, true /*stop if void laguerre cell*/, radial_func.need_ball_cut() );
     if ( err )
         return err;
 

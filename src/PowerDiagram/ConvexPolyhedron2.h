@@ -54,12 +54,16 @@ public:
 
     // information
     void                      write_to_stream           ( std::ostream &os ) const;
+    Pt                        min_position              () const;
+    Pt                        max_position              () const;
+    void                      display_asy               ( std::ostream &os, const std::string &draw_info = "", const std::string &fill_info = "", bool fill = false, bool display_only_one_side = false ) const; ///< ouput asymptote format
     template<class V> void    display                   ( V &vo, const typename V::CV &cell_data = {}, bool filled = true, TF max_ratio_area_error = 1e-1, bool display_tangents = false ) const;
     Pt                        normal                    ( std::size_t n ) const { return { normals[ 0 ][ n ], normals[ 1 ][ n ] }; }
     Pt                        point                     ( std::size_t n ) const { return { points[ 0 ][ n ], points[ 1 ][ n ] }; }
     bool                      empty                     () const { return nb_points == 0 && sphere_radius <= 0; }
 
     // modifications
+    void                      intersect_with            ( const ConvexPolyhedron2 &cp );
     void                      set_cut_ids               ( CI cut_id ); ///< replace all the cut_ids
     template<int no> bool     plane_cut                 ( Pt origin, Pt normal, CI cut_id, N<no> normal_is_normalized ); ///< return true if effective cut
     bool                      plane_cut                 ( Pt origin, Pt normal, CI cut_id = {} ); ///< return true if effective cut
@@ -71,25 +75,25 @@ public:
     bool                      contains                  ( const Pt &pos ) const;
 
     // computations
-    void                      add_centroid_contrib      ( Pt &ctd, TF &vol, FunctionEnum::Gaussian ) const;
-    void                      add_centroid_contrib      ( Pt &ctd, TF &vol, FunctionEnum::Unit     ) const;
-    void                      add_centroid_contrib      ( Pt &ctd, TF &vol, FunctionEnum::R2       ) const;
+    void                      add_centroid_contrib      ( Pt &ctd, TF &vol, FunctionEnum::ExpWmR2db<TF>, TF w = 0 ) const;
+    void                      add_centroid_contrib      ( Pt &ctd, TF &vol, FunctionEnum::Unit         , TF w = 0 ) const;
+    void                      add_centroid_contrib      ( Pt &ctd, TF &vol, FunctionEnum::R2           , TF w = 0 ) const;
     void                      add_centroid_contrib      ( Pt &ctd, TF &vol ) const;
 
-    TF                        boundary_measure          ( FunctionEnum::Gaussian ) const;
-    TF                        boundary_measure          ( FunctionEnum::Unit     ) const;
+    TF                        boundary_measure          ( FunctionEnum::ExpWmR2db<TF> ) const;
+    TF                        boundary_measure          ( FunctionEnum::Unit           ) const;
     TF                        boundary_measure          () const;
 
-    template<class FU> Pt     centroid                  ( const FU &f ) const;
+    template<class FU> Pt     centroid                  ( const FU &f, TF w = 0 ) const;
     Pt                        centroid                  () const;
 
-    template<class FU> TF     measure                   ( const FU &f ) const;
+    template<class FU> TF     measure                   ( const FU &f, TF w = 0 ) const;
     TF                        measure                   () const;
 
 
-    TF                        integration               ( FunctionEnum::Gaussian ) const;
-    TF                        integration               ( FunctionEnum::Unit     ) const;
-    TF                        integration               ( FunctionEnum::R2       ) const;
+    TF                        integration               ( FunctionEnum::ExpWmR2db<TF>, TF w = 0 ) const;
+    TF                        integration               ( FunctionEnum::Unit         , TF w = 0 ) const;
+    TF                        integration               ( FunctionEnum::R2           , TF w = 0 ) const;
 
     TF                        integration               ( SpaceFunctions::Constant<TF> cst ) const;
 

@@ -151,6 +151,8 @@ void RGrid<Pc>::for_each_laguerre_cell( const std::function<void( CP &, std::siz
                 //
                 if ( ball_cut )
                     lc.ball_cut( diracs[ num_dirac ].pos, sqrt( diracs[ num_dirac ].weight ), num_dirac );
+                else
+                    lc.sphere_center = positions[ num_dirac ];
 
                 //
                 cb( lc, num_dirac, num_thread );
