@@ -56,7 +56,7 @@ public:
     void                      write_to_stream           ( std::ostream &os ) const;
     Pt                        min_position              () const;
     Pt                        max_position              () const;
-    void                      display_asy               ( std::ostream &os, const std::string &draw_info = "", const std::string &fill_info = "", bool fill = false, bool display_only_one_side = false ) const; ///< ouput asymptote format
+    void                      display_asy               ( std::ostream &os, const std::string &draw_info = "", const std::string &fill_info = "", bool fill = false, bool avoid_bounds = false ) const; ///< ouput asymptote format
     template<class V> void    display                   ( V &vo, const typename V::CV &cell_data = {}, bool filled = true, TF max_ratio_area_error = 1e-1, bool display_tangents = false ) const;
     Pt                        normal                    ( std::size_t n ) const { return { normals[ 0 ][ n ], normals[ 1 ][ n ] }; }
     Pt                        point                     ( std::size_t n ) const { return { points[ 0 ][ n ], points[ 1 ][ n ] }; }

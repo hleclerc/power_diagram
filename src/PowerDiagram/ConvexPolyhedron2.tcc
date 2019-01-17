@@ -1185,10 +1185,15 @@ typename Pc::TF ConvexPolyhedron2<Pc,CI>::_arc_area( Pt p0, Pt p1 ) const {
 }
 
 template<class Pc, class CI>
-void ConvexPolyhedron2<Pc,CI>::display_asy( std::ostream &os, const std::string &draw_info, const std::string &fill_info, bool want_fill, bool display_only_one_side ) const {
+void ConvexPolyhedron2<Pc,CI>::display_asy( std::ostream &os, const std::string &draw_info, const std::string &fill_info, bool want_fill, bool avoid_bounds ) const {
+    using std::atan2;
+    using std::sin;
+    using std::cos;
+
     for( int nfill = 0; nfill <= want_fill; ++nfill ) {
         int fill = ! nfill;
 
+        bool has_avoided_line = false;
         const auto &info = fill ? fill_info : draw_info;
         if ( nb_points ) {
             os << ( fill ? "fill" : "draw" ) << "(";
@@ -1201,17 +1206,34 @@ void ConvexPolyhedron2<Pc,CI>::display_asy( std::ostream &os, const std::string 
                     if ( a1 < a0 )
                         a1 += 2 * M_PI;
 
-                    size_t n = 1;
-                    os << "(" << point( i )[ 0 ] << "," << point( i )[ 1 ] << ")..";
+                    size_t n = 10;
                     for( size_t i = 0; i < n; ++i ) {
-                        TF ai = a0 + ( a1 - a0 ) * ( i + 0.5 ) / n;
+                        TF ai = a0 + ( a1 - a0 ) * i / n;
+                        os.precision( 16 );
                         os << "(" << sphere_center.x + sphere_radius * cos( ai ) << "," << sphere_center.y + sphere_radius * sin( ai ) << ")..";
                     }
                 } else {
-                    os << "(" << point( i )[ 0 ] << "," << point( i )[ 1 ] << ")--";
+                    os.precision( 16 );
+                    os << "(" << point( i )[ 0 ] << "," << point( i )[ 1 ] << ")";
+
+                    bool last_line_avoided = avoid_bounds && cut_ids[ i ] == TI( -1 ) && fill == false;
+                    has_avoided_line |= last_line_avoided;
+                    if ( last_line_avoided )
+                        os << "^^";
+                    else {
+                        os << "--";
+                    }
                 }
             }
-            os << "cycle" << ( info.empty() ? "" : "," ) << info << ");\n";
+
+            // closing
+            if ( fill || has_avoided_line == false )
+                os << "cycle";
+            else
+                os << "(" << point( 0 )[ 0 ] << "," << point( 0 )[ 1 ] << ")";
+
+            // info
+            os << ( info.empty() ? "" : "," ) << info << ");\n";
         } else if ( sphere_radius > 0 )
             os << ( fill ? "fill" : "draw" ) << "(circle((" << sphere_center.x << "," << sphere_center.y << ")," << sphere_radius << ")" << ( info.empty() ? "" : "," ) << info << ");\n";
     }
