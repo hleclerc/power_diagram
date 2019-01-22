@@ -33,13 +33,8 @@ int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &
     std::vector<std::pair<int,TI>> pos_in_loc_matrices( nb_diracs ); // num dirac => num_thread, num sub row
 
     v_values.resize( nb_diracs );
-    if ( radial_func.need_ball_cut() ) {
-        for( TF &v : v_values )
-            v = - TF( 1 );
-    } else {
-        for( TF &v : v_values )
-            v = - TF( 1 ) / nb_diracs;
-    }
+    for( TF &v : v_values )
+        v = 0;
 
     int err = grid.for_each_laguerre_cell( [&]( auto &lc, std::size_t num_dirac_0, int num_thread ) {
         DataPerThread &dpt = data_per_threads[ num_thread ];
@@ -53,7 +48,7 @@ int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &
         bounds.for_each_intersection( lc, [&]( auto &cp, SpaceFunctions::Constant<TF> space_func ) {
             TF coeff = 0.5 * space_func.coeff;
             v_values[ num_dirac_0 ] += space_func.coeff * cp.integration( radial_func.func_for_final_cp_integration(), d0_weight );
-            #warning ...
+            #warning boundary_measure if not Unit
             cp.for_each_boundary_measure( FunctionEnum::Unit(), [&]( TF boundary_measure, TI num_dirac_1 ) {
                 if ( num_dirac_1 == TI( -1 ) )
                     return;
@@ -88,6 +83,18 @@ int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &
     }, bounds.englobing_convex_polyhedron(), positions, weights, nb_diracs, true /*stop if void laguerre cell*/, radial_func.need_ball_cut() );
     if ( err )
         return err;
+
+    for( TF &v : v_values )
+        if ( v == 0 )
+            return 1;
+
+    if ( radial_func.need_ball_cut() ) {
+        for( TF &v : v_values )
+            v -= TF( 1 );
+    } else {
+        for( TF &v : v_values )
+            v -= TF( 1 ) / nb_diracs;
+    }
 
     // completion of local matrices
     std::size_t nnz = 0;
