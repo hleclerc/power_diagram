@@ -26,6 +26,18 @@ struct ExpWmR2db {
         return {};
     }
 
+    template<class TF>
+    void span_for_viz( const TF& f, TS w ) const {
+        using std::sqrt;
+        using std::exp;
+        using std::pow;
+
+        TS dr = 0.1 * sqrt( eps );
+        f( 5 * sqrt( eps ), 50 * sqrt( eps ), exp( ( w - pow( 27.5 * sqrt( eps ), 2 ) ) / eps ) );
+        for( TS r = 5 * sqrt( eps ); r > 0; r -= dr )
+            f( r, r + dr, exp( ( w - pow( r + 0.5 * dr, 2 ) ) / eps ) );
+    }
+
     TS eps;
 };
 
@@ -46,6 +58,9 @@ struct Unit {
     N<0> need_ball_cut() const {
         return {};
     }
+
+    template<class TF,class TS>
+    void span_for_viz( const TF&, TS ) const {}
 };
 
 struct R2 {
@@ -65,6 +80,9 @@ struct R2 {
     N<0> need_ball_cut() const {
         return {};
     }
+
+    template<class TF,class TS>
+    void span_for_viz( const TF&, TS ) const {}
 };
 
 struct InBallW05 {
@@ -84,6 +102,9 @@ struct InBallW05 {
     N<1> need_ball_cut() const {
         return {};
     }
+
+    template<class TF,class TS>
+    void span_for_viz( const TF&, TS ) const {}
 };
 
 }

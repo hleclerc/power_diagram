@@ -89,12 +89,14 @@ void ConvexPolyhedron2<Pc,CI>::for_each_boundary_measure( FunctionEnum::ExpWmR2d
         } else {
             // Integrate[ Exp[ ( w - (bx+dx*u)*(bx+dx*u) - (by+dy*u)*(by+dy*u) ) / eps ], { u, 0, 1 } ]
             Pt P0 = point( i0 ) - sphere_center, P1 = point( i1 ) - sphere_center;
-            TF d2 = norm_2_p2( P1 - P0 ), d1 = sqrt( d2 ), e5 = sqrt( e.eps );
-            TF c = sqrt( M_PI ) * e5 / 2 * ( 1 ) * exp( ( weight - pow( P1.x * P0.y - P0.x * P1.y, 2 ) / d2 ) / e.eps ) / d1 * (
-                 erf( ( P1.x * ( P1.x - P0.x ) + P1.y * ( P1.y - P0.y ) ) / e5 / d1 ) -
-                 erf( ( P0.x * ( P1.x - P0.x ) + P0.y * ( P1.y - P0.y ) ) / e5 / d1 )
-            );
-            f( d1 * c, cut_ids[ i0 ] );
+            if ( TF d2 = norm_2_p2( P1 - P0 ) ) {
+                TF d1 = sqrt( d2 ), e5 = sqrt( e.eps );
+                TF c = sqrt( M_PI ) * e5 / 2 * ( 1 ) * exp( ( weight - pow( P1.x * P0.y - P0.x * P1.y, 2 ) / d2 ) / e.eps ) / d1 * (
+                            erf( ( P1.x * ( P1.x - P0.x ) + P1.y * ( P1.y - P0.y ) ) / e5 / d1 ) -
+                            erf( ( P0.x * ( P1.x - P0.x ) + P0.y * ( P1.y - P0.y ) ) / e5 / d1 )
+                            );
+                f( d1 * c, cut_ids[ i0 ] );
+            }
         }
     }
 }
@@ -1235,13 +1237,14 @@ typename Pc::TF ConvexPolyhedron2<Pc,CI>::_arc_area( Pt p0, Pt p1 ) const {
 }
 
 template<class Pc, class CI>
-void ConvexPolyhedron2<Pc,CI>::display_asy( std::ostream &os, const std::string &draw_info, const std::string &fill_info, bool want_fill, bool avoid_bounds ) const {
+void ConvexPolyhedron2<Pc,CI>::display_asy( std::ostream &os, const std::string &draw_info, const std::string &fill_info, bool want_fill, bool avoid_bounds, bool want_line ) const {
     using std::atan2;
     using std::sin;
     using std::cos;
 
-    for( int nfill = 0; nfill <= want_fill; ++nfill ) {
-        int fill = ! nfill;
+    for( int fill = want_fill; fill >= 0; --fill ) {
+        if ( fill == false && want_line == false )
+            continue;
 
         bool has_avoided_line = false;
         const auto &info = fill ? fill_info : draw_info;
