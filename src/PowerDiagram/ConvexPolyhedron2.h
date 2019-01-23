@@ -75,9 +75,9 @@ public:
     bool                      contains                  ( const Pt &pos ) const;
 
     // computations
-    void                      add_centroid_contrib      ( Pt &ctd, TF &vol, FunctionEnum::ExpWmR2db<TF>, TF w = 0 ) const;
-    void                      add_centroid_contrib      ( Pt &ctd, TF &vol, FunctionEnum::Unit         , TF w = 0 ) const;
-    void                      add_centroid_contrib      ( Pt &ctd, TF &vol, FunctionEnum::R2           , TF w = 0 ) const;
+    void                      add_centroid_contrib      ( Pt &ctd, TF &vol, FunctionEnum::ExpWmR2db<TF>, SpaceFunctions::Constant<TF> sf, TF w = 0 ) const;
+    void                      add_centroid_contrib      ( Pt &ctd, TF &vol, FunctionEnum::Unit         , SpaceFunctions::Constant<TF> sf, TF w = 0 ) const;
+    void                      add_centroid_contrib      ( Pt &ctd, TF &vol, FunctionEnum::R2           , SpaceFunctions::Constant<TF> sf, TF w = 0 ) const;
     void                      add_centroid_contrib      ( Pt &ctd, TF &vol ) const;
 
     TF                        boundary_measure          ( FunctionEnum::ExpWmR2db<TF> ) const;
@@ -118,9 +118,9 @@ public:
 private:
     enum                      CutType                   { LINE = 0, ARC = 1 };
     struct                    Cut                       { int cut_type; CI cut_id; Pt normal; Pt point; };
-    template<class Coeffs> TF _r_polynomials_integration( const Coeffs &coeffs ) const;
+    template<class Coeffs> TF _r_polynomials_integration( const Coeffs &coeffs, TF scaling = 1 ) const;
     template<class Coef> void _r_centroid_integration   ( TF &r_x, TF &r_y, const Coef &coeffs ) const;
-    void                      _centroid_arc             ( Pt &ctd, TF &mea, Pt p0, Pt p1 ) const;
+    void                      _centroid_arc             ( Pt &ctd, TF &mea, Pt p0, Pt p1, TF coeff ) const;
     TF                        _arc_length               ( Pt p0, Pt p1 ) const;
     TF                        _arc_area                 ( Pt p0, Pt p1 ) const;
 

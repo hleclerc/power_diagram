@@ -617,11 +617,11 @@ void ConvexPolyhedron2<Pc,CI>::clear( Pt englobing_center, TF englobing_radius, 
 
 template<class Pc,class CI>
 void ConvexPolyhedron2<Pc,CI>::add_centroid_contrib( Pt &ctd, TF &mea ) const {
-    add_centroid_contrib( ctd, mea, FunctionEnum::Unit() );
+    add_centroid_contrib( ctd, mea, FunctionEnum::Unit(), SpaceFunctions::Constant<TF>{ 1.0 } );
 }
 
 template<class Pc,class CI>
-void ConvexPolyhedron2<Pc,CI>::add_centroid_contrib( Pt &ctd, TF &mea, FunctionEnum::Unit, TF w ) const {
+void ConvexPolyhedron2<Pc,CI>::add_centroid_contrib( Pt &ctd, TF &mea, FunctionEnum::Unit, SpaceFunctions::Constant<TF> sf, TF w ) const {
     using std::pow;
     //    auto arc_val = [&]( PT P0, PT P1 ) {
     //        using std::atan2;
@@ -686,7 +686,7 @@ void ConvexPolyhedron2<Pc,CI>::add_centroid_contrib( Pt &ctd, TF &mea, FunctionE
     // hand coded version
     if ( nb_points == 0 ) {
         if ( sphere_radius >= 0 ) {
-            TF lea = M_PI * pow( sphere_radius, 2 );
+            TF lea = M_PI * pow( sphere_radius, 2 ) * sf.coeff;
             ctd += lea * sphere_center;
             mea += lea;
         }
@@ -698,7 +698,7 @@ void ConvexPolyhedron2<Pc,CI>::add_centroid_contrib( Pt &ctd, TF &mea, FunctionE
     for( size_t i = 2; i < nb_points; ++i ) {
         Pt B = point( i - 1 );
         Pt C = point( i - 0 );
-        TF lea = 0.5 * ( A.x * ( B.y - C.y ) + B.x * ( C.y - A.y ) + C.x * ( A.y - B.y ) );
+        TF lea = 0.5 * ( A.x * ( B.y - C.y ) + B.x * ( C.y - A.y ) + C.x * ( A.y - B.y ) ) * sf.coeff;
         ctd += TF( TF( 1 ) / 3 * lea ) * ( A + B + C );
         mea += lea;
     }
@@ -707,11 +707,11 @@ void ConvexPolyhedron2<Pc,CI>::add_centroid_contrib( Pt &ctd, TF &mea, FunctionE
     if ( allow_ball_cut )
         for( std::size_t i0 = nb_points - 1, i1 = 0; i1 < nb_points; i0 = i1++ )
             if ( arcs[ i0 ] )
-                _centroid_arc( ctd, mea, point( i0 ), point( i1 ) );
+                _centroid_arc( ctd, mea, point( i0 ), point( i1 ), sf.coeff );
 }
 
 template<class Pc,class CI>
-void ConvexPolyhedron2<Pc,CI>::add_centroid_contrib( Pt &ctd, TF &mea, FunctionEnum::ExpWmR2db<TF> func, TF w ) const {
+void ConvexPolyhedron2<Pc,CI>::add_centroid_contrib( Pt &ctd, TF &mea, FunctionEnum::ExpWmR2db<TF> func, SpaceFunctions::Constant<TF> sf, TF w ) const {
     TODO;
     //    // generated using nsmake run -g3 src/PowerDiagram/offline_integration/gen_approx_integration.cpp --function Gaussian --end-log-scale 10 --precision 1e-10 --centroid
     //    static const std::vector<std::pair<TF,std::array<TF,8>>> coeffs_centroid = {
@@ -753,7 +753,7 @@ void ConvexPolyhedron2<Pc,CI>::add_centroid_contrib( Pt &ctd, TF &mea, FunctionE
 }
 
 template<class Pc,class CI>
-void ConvexPolyhedron2<Pc,CI>::add_centroid_contrib( Pt &ctd, TF &mea, FunctionEnum::R2, TF w ) const {
+void ConvexPolyhedron2<Pc,CI>::add_centroid_contrib( Pt &ctd, TF &mea, FunctionEnum::R2, SpaceFunctions::Constant<TF> sf, TF w ) const {
     TODO;
     //    // generated using nsmake run -g3 src/PowerDiagram/offline_integration/gen_approx_integration.cpp --function R2 --end-log-scale 1000 --precision 1e-10 --centroid
     //    auto arc_val = [&]( PT P0, PT P1 ) {
@@ -844,7 +844,7 @@ template<class Pc,class CI> template<class FU>
 typename ConvexPolyhedron2<Pc,CI>::Pt ConvexPolyhedron2<Pc,CI>::centroid( const FU &f, TF w ) const {
     TF mea = 0;
     Pt ctd = { 0, 0 };
-    add_centroid_contrib( ctd, mea, f, w );
+    add_centroid_contrib( ctd, mea, f, SpaceFunctions::Constant<TF>{ 1.0 }, w );
     return mea ? ctd / mea : ctd;
 }
 
@@ -865,6 +865,7 @@ typename Pc::TF ConvexPolyhedron2<Pc,CI>::measure() const {
 
 template<class Pc,class CI>
 typename Pc::TF ConvexPolyhedron2<Pc,CI>::integration( FunctionEnum::ExpWmR2db<TF> func, TF w ) const {
+    using std::sqrt;
     using std::exp;
 
     // nsmake run -g3 src/PowerDiagram/offline_integration/gen_approx_integration.cpp --function Gaussian --end-log-scale 100 --precision 1e-10 -r 5000 -l 5000
@@ -902,7 +903,7 @@ typename Pc::TF ConvexPolyhedron2<Pc,CI>::integration( FunctionEnum::ExpWmR2db<T
         {            1e+40, {  0.0004340438709, -1.647683473e-07,  3.572519365e-11, -4.838985987e-15,   4.19288882e-19,  -2.26961347e-23,  7.017013478e-28, -9.487047369e-33 } },
     };
 
-    return exp( w / func.eps ) * _r_polynomials_integration( coeffs );
+    return exp( w / func.eps ) * _r_polynomials_integration( coeffs, TF( 1 ) / sqrt( func.eps ) );
 }
 
 template<class Pc,class CI>
@@ -1098,7 +1099,7 @@ typename Pc::TF ConvexPolyhedron2<Pc,CI>::measure_ap( TF max_ratio_area_error ) 
 }
 
 template<class Pc,class CI>
-void ConvexPolyhedron2<Pc,CI>::_centroid_arc( Pt &ctd, TF &mea, Pt p0, Pt p1 ) const {
+void ConvexPolyhedron2<Pc,CI>::_centroid_arc( Pt &ctd, TF &mea, Pt p0, Pt p1, TF coeff ) const {
     using std::atan2;
     using std::sqrt;
     using std::max;
@@ -1126,11 +1127,11 @@ void ConvexPolyhedron2<Pc,CI>::_centroid_arc( Pt &ctd, TF &mea, Pt p0, Pt p1 ) c
 
     TF lea;
     if ( a1 - a0 > M_PI ) {
-        ctd += pie_mbar + tri_area * tri_bary;
-        lea = pie_area + tri_area;
+        ctd += coeff * ( pie_mbar + tri_area * tri_bary );
+        lea = ( pie_area + tri_area ) * coeff;
     } else {
-        ctd += pie_mbar - tri_area * tri_bary;
-        lea = pie_area - tri_area;
+        ctd += coeff * ( pie_mbar - tri_area * tri_bary );
+        lea = ( pie_area - tri_area ) * coeff;
     }
 
     ctd += lea * sphere_center;
@@ -1792,7 +1793,7 @@ void ConvexPolyhedron2<Pc,CI>::_r_centroid_integration( TF &r_x, TF &r_y, const 
 }
 
 template<class Pc,class CI> template<class Coeffs>
-typename Pc::TF ConvexPolyhedron2<Pc,CI>::_r_polynomials_integration( const Coeffs &coeffs ) const {
+typename Pc::TF ConvexPolyhedron2<Pc,CI>::_r_polynomials_integration( const Coeffs &coeffs, TF scaling ) const {
     using std::atan2;
     using std::pow;
 
@@ -2148,7 +2149,7 @@ typename Pc::TF ConvexPolyhedron2<Pc,CI>::_r_polynomials_integration( const Coef
     };
 
     auto int_arc = [&]( Pt P0, Pt P1 ) {
-        TF res = 0, r2 = pow( sphere_radius, 2 );
+        TF res = 0, r2 = pow( scaling * sphere_radius, 2 );
         std::size_t index = cut_index_r( r2 );
         const auto &poly_coeffs = coeffs[ index ].second;
         for( std::size_t d = 0; d < poly_coeffs.size(); ++d )
@@ -2162,7 +2163,7 @@ typename Pc::TF ConvexPolyhedron2<Pc,CI>::_r_polynomials_integration( const Coef
     };
 
     if ( nb_points == 0 ) {
-        TF res = 0, r2 = pow( sphere_radius, 2 );
+        TF res = 0, r2 = pow( scaling * sphere_radius, 2 );
         const auto &poly_coeffs = coeffs[ cut_index_r( r2 ) ].second;
         for( std::size_t d = 0; d < poly_coeffs.size(); ++d )
             res += poly_coeffs[ d ] * pow( r2, d + 1 );
@@ -2172,10 +2173,10 @@ typename Pc::TF ConvexPolyhedron2<Pc,CI>::_r_polynomials_integration( const Coef
     TF res = 0;
     for( std::size_t i1 = 0, i0 = nb_points - 1; i1 < nb_points; i0 = i1++ )
         if ( arcs[ i0 ] )
-            res += int_arc( point( i0 ) - sphere_center, point( i1 ) - sphere_center );
+            res += int_arc( scaling * ( point( i0 ) - sphere_center ), scaling * ( point( i1 ) - sphere_center ) );
         else
-            res += int_seg( point( i0 ) - sphere_center, point( i1 ) - sphere_center );
-    return res;
+            res += int_seg( scaling * ( point( i0 ) - sphere_center ), scaling * ( point( i1 ) - sphere_center ) );
+    return res / pow( scaling, 2 );
 }
 
 } // namespace PowerDiagram
