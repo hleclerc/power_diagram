@@ -46,7 +46,10 @@ public:
     /**/                      ConvexPolyhedron2         ();
 
     // traversal
-    void                      for_each_boundary_measure ( FunctionEnum::Unit, const std::function<void( TF boundary_measure, CI id )> &f ) const;
+    void                      for_each_boundary_measure ( FunctionEnum::ExpWmR2db<TF>, const std::function<void( TF boundary_measure, CI id )> &f, TF weight = 0 ) const;
+    void                      for_each_boundary_measure ( FunctionEnum::Unit         , const std::function<void( TF boundary_measure, CI id )> &f, TF weight = 0 ) const;
+    void                      for_each_boundary_measure ( FunctionEnum::R2           , const std::function<void( TF boundary_measure, CI id )> &f, TF weight = 0 ) const;
+
     void                      for_each_approx_seg       ( const std::function<void( Pt )> &f, TF max_ratio_area_error = 1e-1 ) const; ///<
     void                      for_each_simplex          ( const std::function<void( CI num_0, CI num_1 )> &f ) const;
     void                      for_each_bound            ( const std::function<void( Pt p0, Pt p1, CI id )> &f ) const;
@@ -91,11 +94,14 @@ public:
     TF                        measure                   () const;
 
 
-    TF                        integration               ( FunctionEnum::ExpWmR2db<TF>, TF w = 0 ) const;
-    TF                        integration               ( FunctionEnum::Unit         , TF w = 0 ) const;
-    TF                        integration               ( FunctionEnum::R2           , TF w = 0 ) const;
+    TF                        integration               ( FunctionEnum::ExpWmR2db<TF>, TF weight = 0 ) const;
+    TF                        integration               ( FunctionEnum::Unit         , TF weight = 0 ) const;
+    TF                        integration               ( FunctionEnum::R2           , TF weight = 0 ) const;
 
     TF                        integration               ( SpaceFunctions::Constant<TF> cst ) const;
+
+    TF                        integration_der_wrt_weight( FunctionEnum::ExpWmR2db<TF>, TF weight ) const;
+    template<class FU> TF     integration_der_wrt_weight( FU, TF weight ) const;
 
     // approximate computations
     TF                        boundary_measure_ap       ( TF max_ratio_area_error = 1e-4 ) const; ///<
@@ -119,7 +125,7 @@ private:
     enum                      CutType                   { LINE = 0, ARC = 1 };
     struct                    Cut                       { int cut_type; CI cut_id; Pt normal; Pt point; };
     template<class Coeffs> TF _r_polynomials_integration( const Coeffs &coeffs, TF scaling = 1 ) const;
-    template<class Coef> void _r_centroid_integration   ( TF &r_x, TF &r_y, const Coef &coeffs ) const;
+    template<class Coef> void _r_centroid_integration   ( TF &r_x, TF &r_y, const Coef &coeffs, TF scale = 1 ) const;
     void                      _centroid_arc             ( Pt &ctd, TF &mea, Pt p0, Pt p1, TF coeff ) const;
     TF                        _arc_length               ( Pt p0, Pt p1 ) const;
     TF                        _arc_area                 ( Pt p0, Pt p1 ) const;
