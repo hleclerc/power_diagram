@@ -62,9 +62,11 @@ int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &
                     TF dist = norm_2( d0_center - d1_center );
                     TF b_der = coeff * boundary_measure / dist;
                     dpt.row_items.emplace_back( m_num_dirac_1, - b_der );
-                    der_0 += b_der + cp.integration_der_wrt_weight( radial_func.func_for_final_cp_integration(), d0_weight );
+                    der_0 += b_der;
                 }
             }, weights[ num_dirac_0 ] );
+
+            der_0 += cp.integration_der_wrt_weight( radial_func.func_for_final_cp_integration(), d0_weight );
         } );
         dpt.row_items.emplace_back( num_dirac_0, der_0 );
         std::sort( dpt.row_items.begin(), dpt.row_items.end() );
