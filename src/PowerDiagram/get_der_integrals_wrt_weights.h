@@ -16,10 +16,10 @@ template<class TI,class TF,class Grid,class Bounds,class Pt,class Func>
 int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &m_columns, std::vector<TF> &m_values, std::vector<TF> &v_values, Grid &grid, Bounds &bounds, const Pt *positions, const TF *weights, std::size_t nb_diracs, Func radial_func, bool stop_if_void = true ) {
     struct DataPerThread {
         DataPerThread( std::size_t approx_nb_diracs ) {
-            row_items    .reserve( 64 );
-            offsets      .reserve( approx_nb_diracs );
-            columns      .reserve( 5 * approx_nb_diracs );
-            values       .reserve( 5 * approx_nb_diracs );
+            row_items.reserve( 64 );
+            offsets  .reserve( approx_nb_diracs );
+            columns  .reserve( 5 * approx_nb_diracs );
+            values   .reserve( 5 * approx_nb_diracs );
         }
 
         std::vector<std::pair<TI,TF>> row_items;
