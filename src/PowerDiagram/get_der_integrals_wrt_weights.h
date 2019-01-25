@@ -13,7 +13,7 @@ namespace PowerDiagram {
    We assume that grid has already been initialized by diracs
 */
 template<class TI,class TF,class Grid,class Bounds,class Pt,class Func>
-int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &m_columns, std::vector<TF> &m_values, std::vector<TF> &v_values, Grid &grid, Bounds &bounds, const Pt *positions, const TF *weights, std::size_t nb_diracs, Func radial_func ) {
+int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &m_columns, std::vector<TF> &m_values, std::vector<TF> &v_values, Grid &grid, Bounds &bounds, const Pt *positions, const TF *weights, std::size_t nb_diracs, Func radial_func, bool stop_if_void = true ) {
     struct DataPerThread {
         DataPerThread( std::size_t approx_nb_diracs ) {
             row_items    .reserve( 64 );
@@ -81,21 +81,22 @@ int get_der_integrals_wrt_weights( std::vector<TI> &m_offsets, std::vector<TI> &
             dpt.columns.push_back( dpt.row_items[ i ].first  );
             dpt.values .push_back( dpt.row_items[ i ].second );
         }
-    }, bounds.englobing_convex_polyhedron(), positions, weights, nb_diracs, true /*stop if void laguerre cell*/, radial_func.need_ball_cut() );
+    }, bounds.englobing_convex_polyhedron(), positions, weights, nb_diracs, stop_if_void /*stop if void laguerre cell*/, radial_func.need_ball_cut() );
     if ( err )
         return err;
 
-    for( TF &v : v_values )
-        if ( v == 0 )
-            return 1;
+    if ( stop_if_void )
+        for( TF &v : v_values )
+            if ( v == 0 )
+                return 1;
 
-    if ( radial_func.need_ball_cut() ) {
-        for( TF &v : v_values )
-            v -= TF( 1 );
-    } else {
-        for( TF &v : v_values )
-            v -= TF( 1 ) / nb_diracs;
-    }
+    //    if ( radial_func.need_ball_cut() ) {
+    //        for( TF &v : v_values )
+    //            v -= TF( 1 );
+    //    } else {
+    //        for( TF &v : v_values )
+    //            v -= TF( 1 ) / nb_diracs;
+    //    }
 
     // completion of local matrices
     std::size_t nnz = 0;

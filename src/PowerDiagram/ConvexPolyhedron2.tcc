@@ -176,6 +176,7 @@ void ConvexPolyhedron2<Pc,CI>::ball_cut( Pt center, TF radius, CI cut_id ) {
     using std::pow;
     using std::max;
     using std::min;
+    using std::abs;
 
     // store sphere info
     sphere_center = center;
@@ -213,11 +214,11 @@ void ConvexPolyhedron2<Pc,CI>::ball_cut( Pt center, TF radius, CI cut_id ) {
         TF a = norm_2_p2( p1 - p0 );
         TF b = dot( p0 - center, p1 - p0 );
         TF c = norm_2_p2( p0 - center ) - pow( radius, 2 );
-        TF d = sqrt( std::max( TF( 0 ), b * b - a * c ) );
+        TF d = sqrt( max( TF( 0 ), b * b - a * c ) );
         TF u = ( - b + d ) / a;
         TF v = ( - b - d ) / a;
-        TF t = std::abs( u - 0.5 ) <= std::abs( v - 0.5 ) ? u : v;
-        return p0 + std::min( TF( 1 ), std::max( TF( 0 ), t ) ) * ( p1 - p0 );
+        TF t = abs( u - TF( 0.5 ) ) <= abs( v - TF( 0.5 ) ) ? u : v;
+        return p0 + min( TF( 1 ), max( TF( 0 ), t ) ) * ( p1 - p0 );
     };
 
     auto find_two_cuts = [&]( Pt &pi0, Pt &pi1, const Pt &p0, const Pt &p1 ) {
